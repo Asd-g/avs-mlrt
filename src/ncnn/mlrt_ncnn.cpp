@@ -364,13 +364,41 @@ static int AVSC_CC set_cache_hints_mlrt_ncnn(AVS_FilterInfo* fi, int cachehints,
 
 static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value args, void* param)
 {
-    enum { Clips, Network_path, Overlap_w, Overlap_h, Tilesize_w, Tilesize_h, Device_id, Num_streams, Builtin, Builtindir, Fp16, Path_is_serialization };
+    enum { Clips, Network_path, Overlap_w, Overlap_h, Tilesize_w, Tilesize_h, Device_id, Num_streams, Builtin, Builtindir, Fp16, Path_is_serialization, List_gpu };
 
     avsNcnnData* d{ new avsNcnnData() };
     ++num_plugin_instances;
 
     AVS_FilterInfo* fi;
     AVS_Clip* clip{ avs_new_c_filter(env, &fi, *avs_as_array(avs_array_elt(args, Clips)), 1) };
+
+    if (avs_defined(avs_array_elt(args, List_gpu)) ? avs_as_bool(avs_array_elt(args, List_gpu)) : 0)
+    {
+        std::string text;
+
+        for (auto i{ 0 }; i < ncnn::get_gpu_count(); ++i)
+            text += std::to_string(i) + ": " + ncnn::get_gpu_info(i).device_name() + "\n";
+
+        d->err = std::make_unique<char[]>(text.size() + 1);
+        strcpy(d->err.get(), text.c_str());
+
+        AVS_Value cl{ avs_new_value_clip(clip) };
+        AVS_Value args_[2]{ cl, avs_new_value_string(d->err.get()) };
+        AVS_Value inv{ avs_invoke(fi->env, "Text", avs_new_value_array(args_, 2), 0) };
+        AVS_Clip* clip1{ avs_take_clip(inv, env) };
+
+        AVS_Value v{ avs_new_value_clip(clip1) };
+
+        avs_release_clip(clip1);
+        avs_release_value(inv);
+        avs_release_value(cl);
+        avs_release_clip(clip);
+
+        if (--num_plugin_instances == 0)
+            ncnn::destroy_gpu_instance();
+
+        return v;
+    }
 
     const int num_nodes{ avs_array_size(avs_array_elt(args, Clips)) };
     d->nodes.reserve(num_nodes - 1);
@@ -469,19 +497,22 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
     d->fp16 = !!avs_defined(avs_array_elt(args, Fp16)) ? (avs_as_bool(avs_array_elt(args, Fp16))) : false;
 
     const bool path_is_serialization{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Path_is_serialization)) ? (avs_as_bool(avs_array_elt(args, Path_is_serialization))) : false) };
+    const char* network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
+    if (!network_path)
+        return set_error("network_path must be specified");
 
     std::string_view path_view;
     std::string path;
     if (path_is_serialization)
     {
         path_view = {
-            avs_as_string(avs_array_elt(args, Network_path)),
+            network_path,
             static_cast<size_t>(strlen(avs_as_string(avs_array_elt(args, Network_path))))
         };
     }
     else
     {
-        path = avs_as_string(avs_array_elt(args, Network_path));
+        path = network_path;
         const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
         if (builtin)
         {
@@ -608,6 +639,6 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
 
 const char* AVSC_CC avisynth_c_plugin_init(AVS_ScriptEnvironment* env)
 {
-    avs_add_function(env, "mlrt_ncnn", "c+s[overlap_w]i[overlap_h]i[tilesize_w]i[tilesize_h]i[device_id]i[num_streams]i[builtin]b[builtindir]s[fp16]b[path_is_serialization]b", Create_mlrt_ncnn, 0);
+    avs_add_function(env, "mlrt_ncnn", "c+[network_path]s[overlap_w]i[overlap_h]i[tilesize_w]i[tilesize_h]i[device_id]i[num_streams]i[builtin]b[builtindir]s[fp16]b[path_is_serialization]b[list_gpu]b", Create_mlrt_ncnn, 0);
     return "mlrt_ncnn";
 }
