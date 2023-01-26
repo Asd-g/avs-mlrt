@@ -1,0 +1,9 @@
+[submodule "ncnn"]
+	path = ncnn
+	url = https://github.com/Tencent/ncnn
+[submodule "protobuf"]
+	path = protobuf
+	url = https://github.com/protocolbuffers/protobuf
+[submodule "onnx"]
+	path = onnx
+	url = https://github.com/onnx/onnx
