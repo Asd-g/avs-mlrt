@@ -1,12 +1,11 @@
 ### Building:
 
-    ```
     Requirements:
         - Vulkan SDK (https://vulkan.lunarg.com/sdk/home#windows)
         - protobuf
         - onnx
         - ncnn
-    ```
+        - boost
 
 - Windows
     ```
@@ -25,12 +24,14 @@
 
         Download the latest ncnn release.
 
-        Use solution files to build avs_mlrt.
+        Building boost:
+            b2 --with-system --with-filesystem --with-chrono -q --toolset=msvc-14.3 address-model=64 variant=release link=static runtime-link=shared threading=multi --hash --prefix=.\bin\x64
+            b2 --with-system --with-filesystem --with-chrono -q --toolset=msvc-14.3 address-model=64 variant=release link=static runtime-link=shared threading=multi --hash --prefix=.\bin\x64 install
+
+        Use solution files to build avs_mlrt_ncnn.
     ```
 
 - Linux
     ```
 
     ```
-
-[Back to top](#description)
