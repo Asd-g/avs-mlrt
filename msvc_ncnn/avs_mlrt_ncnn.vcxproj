@@ -23,7 +23,7 @@
     <ProjectGuid>{5BD94290-D860-4EE1-A030-DD4501BDD4E6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>avs_mlrt</ProjectName>
+    <ProjectName>avs_mlrt_ncnn</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
