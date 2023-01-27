@@ -1,4 +1,4 @@
-### A wrapper of avs_mlrt for all bundled models.
+### A wrapper of avs-mlrt for all bundled models.
 
 
 ### Requirements - avs_mlrt, avsresize, fmtconv.
@@ -48,6 +48,7 @@
 # mlrt_CUGAN: default 2; must be 2, 3, or 4.
 #---------------
 # model (mlrt_W2x, mlrt_DPIR, mlrt_RealESRGAN): What model to be used.
+# Folder "models" must be in the same location as avs-mlrt.
 /*
 mlrt_W2x:
 0: "anime_style_art"
