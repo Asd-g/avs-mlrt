@@ -88,10 +88,12 @@ Default 0.
 # conformance (mlrt_CUGAN) (default True): Currently specifies dynamic range compression for cugan-pro.
 
 
-### Version: 1.0.0
+### Version: 1.0.1
 
 
 ### Changelog ###
+#---------------
+# mlrt_W2x: fixed the model path when scale=1.
 #---------------
 # Initial version.
 
@@ -152,7 +154,7 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     }
     else
     {
-        scale_name = (scale == 1) ? NOP() : "scale2.0x_"
+        scale_name = (scale == 1) ? "" : "scale2.0x_"
 
         model_name = (noise == -1) ? "scale2.0x_model.onnx" : ("noise" + String(noise) + "_" + scale_name + "model.onnx")
     }
