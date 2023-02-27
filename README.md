@@ -2,9 +2,11 @@
 
 This project provides AviSynth+ ML filter runtimes for variety of platforms.
 
+This is [a partial port of the VapourSynth plugin vs-mlrt](https://github.com/AmusementClub/vs-mlrt).
+
 To simplify usage, a wrapper [mlrt.avsi](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt.avsi) is provided for all bundled models.
 
-This is [a partial port of the VapourSynth plugin vs-mlrt](https://github.com/AmusementClub/vs-mlrt).
+Custom models can be found [in this doom9 thread](https://forum.doom9.org/showthread.php?t=184768).
 
 ### Requirements:
 
