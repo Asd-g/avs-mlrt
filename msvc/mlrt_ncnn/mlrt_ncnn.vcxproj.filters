@@ -15,22 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\common\onnx_utils.cpp">
+    <ClCompile Include="..\..\src\common\onnx_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\common\convert_float_to_float16.cpp">
+    <ClCompile Include="..\..\src\ncnn\onnx2ncnn.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ncnn\onnx2ncnn.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\ncnn\mlrt_ncnn.cpp">
+    <ClCompile Include="..\..\src\ncnn\mlrt_ncnn.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\ncnn\onnx2ncnn.h">
+    <ClInclude Include="..\..\src\ncnn\onnx2ncnn.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\src\ncnn\mlrt_ncnn.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

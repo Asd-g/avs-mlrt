@@ -20,10 +20,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{5BD94290-D860-4EE1-A030-DD4501BDD4E6}</ProjectGuid>
+    <ProjectGuid>{9FD8B095-0E67-4C9C-9F39-83814C093C6B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>mlrt_ncnn</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -71,17 +70,13 @@
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\VulkanSDK\1.3.236.0\Include;..\..\boost_1_80_0\bin\debug_x64\include\boost-1_80;..\..\ncnn\build\install\include\ncnn;..\..\protobuf\install\include;..\..\onnx\install\include;..\..\AviSynthPlus\avs_core\include;$(IncludePath)</IncludePath>
-    <LibraryPath>..\..\protobuf\install\lib;C:\VulkanSDK\1.3.236.0\Lib;..\..\boost_1_80_0\bin\debug_x64\lib;..\..\ncnn\build\install\lib;..\..\onnx\install\lib;..\..\AviSynthPlus\build_x64\Output\c_api;$(LibraryPath)</LibraryPath>
+    <IncludePath>..\..\..\boost_1_81_0\bin\x64_debug\include\boost-1_81;..\..\..\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\include;..\..\install\include;..\..\..\AviSynthPlus\avs_core\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\..\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\lib\intel64\Debug;..\..\install\lib;..\..\..\boost_1_81_0\bin\x64_debug\lib;..\..\..\AviSynthPlus\build_x64_clang\Output\c_api;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\VulkanSDK\1.3.236.0\Include;..\..\ncnn-20221128-windows-vs2022\x64\include\ncnn;..\..\boost_1_80_0\bin\x64\include\boost-1_80;..\install\include;..\..\AviSynthPlus\avs_core\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\install\include;..\..\..\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\include;..\..\..\boost_1_81_0\bin\x64\include\boost-1_81;..\..\..\AviSynthPlus\avs_core\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\..\install\lib;..\..\..\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\lib\intel64\Release;..\..\..\boost_1_81_0\bin\x64\lib;..\..\..\AviSynthPlus\build_x64_clang\Output\c_api;$(LibraryPath)</LibraryPath>
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>..\..\ncnn-20221128-windows-vs2022\x64\lib;..\..\boost_1_80_0\bin\x64\lib;C:\VulkanSDK\1.3.236.0\Lib;..\install\lib;..\..\AviSynthPlus\build_x64\Output\c_api;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
-  <PropertyGroup Label="LLVM" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <UseLlvmLib>false</UseLlvmLib>
-    <UseLlvmRc>false</UseLlvmRc>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -113,16 +108,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Link>
-      <AdditionalDependencies>AviSynth.lib;libboost_filesystem-vc143-mt-gd-x64-1_80.lib;ncnnd.lib;onnx.lib;onnx_proto.lib;vulkan-1.lib;libprotobuf-lited.lib;SPIRVd.lib;glslangd.lib;GenericCodeGend.lib;MachineIndependentd.lib;OGLCompilerd.lib;OSDependentd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
     <ClCompile>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>AviSynth.lib;libboost_filesystem-vc143-mt-gd-x64-1_81.lib;onnx.lib;onnx_proto.lib;libprotobuf-lited.lib;openvinod.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalDependencies>libboost_filesystem-vc143-mt-x64-1_80.lib;ncnn.lib;vulkan-1.lib;AviSynth.lib;onnx.lib;onnx_proto.lib;libprotobuf-lite.lib;SPIRV.lib;OGLCompiler.lib;MachineIndependent.lib;GenericCodeGen.lib;OSDependent.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>AviSynth.lib;libboost_filesystem-vc143-mt-x64-1_81.lib;onnx.lib;onnx_proto.lib;libprotobuf-lite.lib;openvino.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
@@ -133,21 +128,14 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\common\convert_float_to_float16.cpp" />
-    <ClCompile Include="..\src\common\onnx_utils.cpp" />
-    <ClCompile Include="..\src\ncnn\mlrt_ncnn.cpp" />
-    <ClCompile Include="..\src\ncnn\onnx2ncnn.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\src\ncnn\onnx2ncnn.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="..\src\ncnn\mlrt_ncnn.rc" />
+    <ClCompile Include="..\..\src\common\convert_float_to_float16.cpp" />
+    <ClCompile Include="..\..\src\common\onnx_utils.cpp" />
+    <ClCompile Include="..\..\src\ov\mlrt_ov.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
