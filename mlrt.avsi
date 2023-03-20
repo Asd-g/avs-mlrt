@@ -6,13 +6,13 @@
 
 ### Usage ###
 ###
-# mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", bool "preprocess", string "backend_args")
+# mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", bool "preprocess")
 #
-# mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", string "backend_args")
+# mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend")
 #
-# mlrt_RealESRGAN/mlrt_RealESRGANv2(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale", string "backend_args")
+# mlrt_RealESRGAN/mlrt_RealESRGANv2(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale")
 #
-# mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", val "backend", int "version", bool "conformance", string "backend_args")
+# mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", val "backend", int "version", bool "conformance")
 ###
 ## Parameters ##
 #---------------
@@ -31,24 +31,22 @@
 # mlrt_CUGAN overlap_w default: 4.
 # overlap_h default: overlap_w.
 #---------------
-# backend (default "ncnn"): What backend to be used (currently only ncnn) and its tuning parameters.
+# backend (default "ncnn"): What backend to be used (currently ncnn and ov) and its tuning parameters.
 # It can be specified as single string.
 # If specified as array of strings, the first element must be the backend type and the rest one are the tuning parameters.
 # For example, backend=["ncnn",  "fp16=true"] - backend type is "ncnn" and fp16 mode is True.
-#---------------
-# backend_args (default not specified): Additional backend arguments.
 #---------------
 # noise (mlrt_W2x, mlrt_CUGAN) (default -1): Denoise level.
 # Large value means strong denoise effect, -1 - no effect.
 # Must be between -1..3.
 #---------------
 # scale (mlrt_W2x, mlrt_RealESRGAN, mlrt_CUGAN): Upscale ratio.
-# mlrt_W2x: default 2; must be either 1 or 2.
+# mlrt_W2x: default 2; must be either 1, 2, or 4.
 # mlrt_RealESRGAN default: not specified.
 # mlrt_CUGAN: default 2; must be 2, 3, or 4.
 #---------------
 # model (mlrt_W2x, mlrt_DPIR, mlrt_RealESRGAN): What model to be used.
-# Folder "models" must be in the same location as avs-mlrt.
+# Folder "models" must be in the same location as mlrt_xxx.dll.
 /*
 mlrt_W2x:
 0: "anime_style_art"
@@ -58,6 +56,7 @@ mlrt_W2x:
 4: "upconv_7_photo"
 5: "upresnet10"
 6: "cunet"
+7: "swin_unet_art"
 Default 6.
 */
 /*
@@ -88,36 +87,40 @@ Default 0.
 # conformance (mlrt_CUGAN) (default True): Currently specifies dynamic range compression for cugan-pro.
 
 
-### Version: 1.0.1
+### Version: 1.1.0
 
 
 ### Changelog ###
+#---------------
+# mlrt_W2x: added swin_unet_art models.
+# Added backend "ov".
+# Removed parameter backend_args.
 #---------------
 # mlrt_W2x: fixed the model path when scale=1.
 #---------------
 # Initial version.
 
 
-Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", bool "preprocess", string "backend_args")
+Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", bool "preprocess")
 {
     noise = Default(noise, -1)
     scale = Default(scale, 2)
     model = Default(model, 6)
-    overlap_w = Default(overlap_w, Select(model, 8, 8, 8, 8, 8, 4, 4))
+    overlap_w = Default(overlap_w, Select(model, 8, 8, 8, 8, 8, 4, 4, 4))
     overlap_h = Default(overlap_h, overlap_w)
     preprocess = Default(preprocess, True)
-    backend_args = Defined(backend_args) ? (", " + backend_args) : ""
     backend = backend_def(backend)
 
     Assert(ComponentSize(c) == 4, "mlrt_W2x: clip must be in 32-bit planar format.")
     Assert(noise >= -1 && noise <= 3, "mlrt_W2x: noise must be -1, 0, 1, 2, or 3.")
-    Assert(scale == 1 || scale == 2, "mlrt_W2x: scale must be 1 or 2.")
-    Assert(model >= 0 && model <= 6, "mlrt_W2x: model must be 0, 1, 2, 3, 4, 5, or 6.")
-    Assert(backend[0] == "ncnn", "mlrt_W2x: backend must be ncnn.")
+    Assert(scale == 1 || scale == 2 || scale == 4, "mlrt_W2x: scale must be 1, 2, or 4.")
+    Assert(model >= 0 && model <= 7, "mlrt_W2x: model must be 0, 1, 2, 3, 4, 5, 6, or 7.")
+    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_W2x: backend must be either ncnn or ov.")
 
-    w2x_models = Select(model, "anime_style_art", "anime_style_art_rgb", "photo", "upconv_7_anime_style_art_rgb", "upconv_7_photo", "upresnet10", "cunet")
+    w2x_models = Select(model, "anime_style_art", "anime_style_art_rgb", "photo", "upconv_7_anime_style_art_rgb", "upconv_7_photo", "upresnet10", "cunet", "swin_unet_art")
 
     Assert(!(model == 0 && noise == 0), "mlrt_W2x: anime_style_art model does not support noise reduction level 0.")
+    Assert((model < 7 && scale < 4) || model == 7, "mlrt_W2x: scale must be 1 or 2.")
 
     if (model == 0)
     {
@@ -152,16 +155,24 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     {
         model_name = (noise == -1) ? "scale2.0x_model.onnx" : ("noise" + String(noise) + "_scale2.0x_model.onnx")
     }
-    else
+    else if (model == 6)
     {
         scale_name = (scale == 1) ? "" : "scale2.0x_"
 
         model_name = (noise == -1) ? "scale2.0x_model.onnx" : ("noise" + String(noise) + "_" + scale_name + "model.onnx")
     }
+    else
+    {
+        Assert(noise != -1 && scale != 1, "mlrt_W2x: swin_unet model for noise=-1 and scale=1 does not exist.")
+
+        scale_name = (scale > 1) ? (scale > 2) ? "scale4x" : "scale2x" : ""
+
+        model_name = (noise > -1) ? (scale == 1) ? ("noise" + String(noise) + ".onnx") : ("noise" + String(noise) + "_" + scale_name + ".onnx") : (scale_name + ".onnx")
+    }
 
     backend_defaults = backend_defaults(backend)
 
-    c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true, " + backend_defaults + backend_args + ")")
+    c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     if (scale == 1 && (Width(c) / width == 2))
     {
@@ -173,17 +184,16 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     return c
 }
 
-Function mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", string "backend_args")
+Function mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend")
 {
     model = Default(model, 0)
     overlap_w = Default(overlap_w, 0)
     overlap_h = Default(overlap_h, overlap_w)
-    backend_args = Defined(backend_args) ? (", " + backend_args) : ""
     backend = backend_def(backend)
 
     Assert(ComponentSize(c) == 4, "mlrt_DPIR: clip must be in 32-bit planar format.")
     Assert(model >= 0 && model <= 3, "mlrt_DPIR: model must be 0, 1, 2, or 3.")
-    Assert(backend[0] == "ncnn", "mlrt_DPIR: backend must be ncnn.")
+    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_DPIR: backend must be either ncnn or ov.")
 
     dpir_models = Select(model, "drunet_gray", "drunet_color", "drunet_deblocking_grayscale", "drunet_deblocking_color")
 
@@ -221,21 +231,20 @@ Function mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "ove
     network_path = "dpir/" + dpir_models + ".onnx"
     backend_defaults = backend_defaults(backend)
 
-    return Eval("mlrt_" + backend[0] + "([c, strength], network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true, " + backend_defaults + backend_args + ")")
+    return Eval("mlrt_" + backend[0] + "([c, strength], network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 }
 
-Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale", string "backend_args")
+Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale")
 {
     model = Default(model, 0)
     overlap_w = Default(overlap_w, 8)
     overlap_h = Default(overlap_h, overlap_w)
-    backend_args = Defined(backend_args) ? (", " + backend_args) : ""
     backend = backend_def(backend)
 
     Assert(ComponentSize(c) == 4, "mlrt_RealESRGAN: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_RealESRGAN: clip must be of planar RGB color family.")
     Assert(model >= 0 && model <= 2, "mlrt_RealESRGAN: model must be 0, 1, or 2.")
-    Assert(backend[0] == "ncnn", "mlrt_RealESRGAN: backend must be ncnn.")
+    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_RealESRGAN: backend must be either ncnn or ov.")
 
     # v2, v2, v3 4x
     realesrgan_models = Select(model, "animevideo-xsx2", "animevideo-xsx4", "animevideov3")
@@ -250,7 +259,7 @@ Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", i
     backend_defaults = backend_defaults(backend)
 
     clip_org = c
-    c = Eval("mlrt_" + backend[0] + "(c, network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true, " + backend_defaults + backend_args + ")")
+    c = Eval("mlrt_" + backend[0] + "(c, network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     if (Defined(scale))
     {
@@ -271,12 +280,12 @@ Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", i
     return c
 }
 
-Function mlrt_RealESRGANv2(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale", string "backend_args")
+Function mlrt_RealESRGANv2(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale")
 {
-    return mlrt_RealESRGAN(c, tiles, tilesize, overlap_w, overlap_h, model, backend, scale, backend_args)
+    return mlrt_RealESRGAN(c, tiles, tilesize, overlap_w, overlap_h, model, backend, scale)
 }
 
-Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", val "backend", int "version", bool "conformance", string "backend_args")
+Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", val "backend", int "version", bool "conformance")
 {
     /*
     denoising strength: 0 < -1 < 1 < 2 < 3
@@ -291,14 +300,13 @@ Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize
     overlap_h = Default(overlap_h, overlap_w)
     version = Default(version, 1)
     conformance = Default(conformance, True) # currently specifies dynamic range compression for cugan-pro
-    backend_args = Defined(backend_args) ? (", " + backend_args) : ""
     backend = backend_def(backend)
 
     Assert(ComponentSize(c) == 4, "mlrt_CUGAN: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_CUGAN: clip must be of planar RGB color family.")
     Assert(noise >= -1 && noise <= 3, "mlrt_CUGAN: noise must be -1, 0, 1, 2, or 3.")
     Assert(scale == 2 || scale == 3 || scale == 4, "mlrt_CUGAN: scale must be 2, 3, or 4.")
-    Assert(backend[0] == "ncnn", "mlrt_CUGAN: backend must be ncnn.")
+    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_CUGAN: backend must be either ncnn or ov.")
     Assert(version == 1 || version == 2, "mlrt_CUGAN: version must be 1 (legacy) or 2 (pro)")
     Assert(!(scale != 2 && (noise == 1 || noise == 2)), "mlrt_CUGAN: scale=" + String(scale) + " model.\nmlrt_CUGAN does not support noise reduction level " + String(noise) + ".")
 
@@ -328,7 +336,7 @@ Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize
 
     backend_defaults = backend_defaults(backend)
 
-    c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true, " + backend_defaults + backend_args + ")")
+    c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     # https://github.com/bilibili/ailab/blob/e102bef22384c629f82552dbec3d6b5bab125639/Real-CUGAN/upcunet_v3.py#L269
     if (conformance && version == 2)
@@ -370,21 +378,6 @@ Function calc_size(int width, int tiles, int overlap, int multiple)
     return Ceil((width + 2 * overlap * (tiles - 1)) / (tiles * multiple)) * multiple
 }
 
-Function ncnn_defaults(bool "fp16", int "device_id", int "num_streams")
-{
-    /*
-    basic performance tuning:
-    set fp16 = True (on modern GPUs)
-    increase num_streams
-    */
-
-    fp16 = Default(fp16, True)
-    device_id = Default(device_id, 0)
-    num_streams = Default(num_streams, 1)
-
-    return "fp16=" + String(fp16) + ", " + "device_id=" + String(device_id) + ", " + "num_streams=" + String(num_streams)
-}
-
 Function backend_def(val "backend")
 {
     return Defined(backend) ? IsArray(backend) ? backend : \
@@ -393,21 +386,136 @@ Function backend_def(val "backend")
 
 Function backend_defaults(string_array backend)
 {
-    backend_string = backend_format(backend)
+    backend_string = (ArraySize(backend) == 1) ? "" : (", " + backend[1])
+
+    for (i = 2, ArraySize(backend) - 1)
+    {
+        backend_string = backend_string + ", " + backend[i]
+    }
 
     if (backend[0] == "ncnn")
     {
-        return eval("ncnn_defaults(" + backend_string + ")")
+        /*
+        basic performance tuning:
+        set fp16 = True (on modern GPUs)
+        increase num_streams
+        */
+
+        if (FindStr(backend_string, "fp16") == 0)
+        {
+            backend_string = backend_string + ", fp16=true"
+        }
+        if (FindStr(backend_string, "device_id") == 0)
+        {
+            backend_string = backend_string + ", device_id=0"
+        }
+        if (FindStr(backend_string, "num_streams") == 0)
+        {
+            backend_string = backend_string + ", num_streams=1"
+        }
     }
-}
-
-Function backend_format(string_array backend)
-{
-    backend_string = ""
-
-    for (i = 1, ArraySize(backend) - 1)
+    else if (backend[0] == "ov")
     {
-        backend_string = (i == 1) ? backend[1] : (backend_string + ", " + backend[i])
+        if (FindStr(backend_string, "device") == 0 || FindStr(backend_string, """device="CPU"""") > 0)
+        {
+            /*
+            CPU basic performance tuning:
+            ENFORCE_BF16=YES (on Zen4)
+            increase num_streams
+            */
+
+            if (FindStr(backend_string, "config") == 0)
+            {
+                backend_string = backend_string + """, config="CPU_THROUGHPUT_STREAMS=1 CPU_BIND_THREAD=YES CPU_THREADS_NUM=0""""
+            }
+            else
+            {
+                if (FindStr(backend_string, "CPU_THROUGHPUT_STREAMS") == 0)
+                {
+                    beginning = MidStr(backend_string, FindStr(backend_string, "config"))
+
+                    i = 9
+                    while(MidStr(beginning, i, 1) != """"""")
+                    {
+                        i = i + 1
+                    }
+
+                    result = MidStr(beginning, 1, i-1) + " CPU_THROUGHPUT_STREAMS=1" + """""""
+                    backend_string = ReplaceStr(backend_string, MidStr(beginning, 1, i), result)
+                }
+                if (FindStr(backend_string, "CPU_BIND_THREAD") == 0)
+                {
+                    beginning = MidStr(backend_string, FindStr(backend_string, "config"))
+
+                    i = 9
+                    while(MidStr(beginning, i, 1) != """"""")
+                    {
+                        i = i + 1
+                    }
+
+                    result = MidStr(beginning, 1, i-1) + " CPU_BIND_THREAD=YES" + """""""
+                    backend_string = ReplaceStr(backend_string, MidStr(beginning, 1, i), result)
+                }
+                if (FindStr(backend_string, "CPU_THREADS_NUM") == 0)
+                {
+                    beginning = MidStr(backend_string, FindStr(backend_string, "config"))
+
+                    i = 9
+                    while(MidStr(beginning, i, 1) != """"""")
+                    {
+                        i = i + 1
+                    }
+
+                    result = MidStr(beginning, 1, i-1) + " CPU_THREADS_NUM=0" + """""""
+                    backend_string = ReplaceStr(backend_string, MidStr(beginning, 1, i), result)
+                }
+            }
+            if (FindStr(backend_string, "fp16") == 0)
+            {
+                backend_string = backend_string + ", fp16=false"
+            }
+            if (FindStr(backend_string, "fp16_blacklist_ops") == 0)
+            {
+                backend_string = backend_string + """, fp16_blacklist_ops="""""
+            }
+        }
+        else
+        {
+            /*
+            GPU basic performance tuning:
+            set fp16 = True
+            increase num_streams
+            */
+
+            if (FindStr(backend_string, "config") == 0)
+            {
+                backend_string = backend_string + """, config="GPU_THROUGHPUT_STREAMS=1""""
+            }
+            else
+            {
+                if (FindStr(backend_string, "GPU_THROUGHPUT_STREAMS") == 0)
+                {
+                    beginning = MidStr(backend_string, FindStr(backend_string, "config"))
+
+                    i = 9
+                    while(MidStr(beginning, i, 1) != """"""")
+                    {
+                        i = i + 1
+                    }
+
+                    result = MidStr(beginning, 1, i-1) + " GPU_THROUGHPUT_STREAMS=1" + """""""
+                    backend_string = ReplaceStr(backend_string, MidStr(beginning, 1, i), result)
+                }
+            }
+            if (FindStr(backend_string, "fp16") == 0)
+            {
+                backend_string = backend_string + ", fp16=false"
+            }
+            if (FindStr(backend_string, "fp16_blacklist_ops") == 0)
+            {
+                backend_string = backend_string + """, fp16_blacklist_ops="""""
+            }
+        }
     }
 
     return backend_string
