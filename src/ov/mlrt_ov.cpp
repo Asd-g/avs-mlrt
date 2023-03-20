@@ -426,6 +426,9 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         }
     };
 
+    if (avs_check_version(env, 10))
+        return set_error("AviSynth+ version must be r3928 or later.");
+
     std::vector<const AVS_VideoInfo*> in_vis;
     in_vis.reserve(num_nodes);
     in_vis.emplace_back(&fi->vi);
@@ -590,7 +593,7 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         {
             try
             {
-                ov::pass::VisualizeTree(avs_as_string(avs_array_elt(args, Builtindir)), nullptr, true).run_on_function(function);
+                ov::pass::VisualizeTree(avs_as_string(avs_array_elt(args, Dot_path)), nullptr, true).run_on_function(function);
             }
             catch (const ov::Exception& e)
             {
@@ -673,6 +676,6 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
 
 const char* AVSC_CC avisynth_c_plugin_init(AVS_ScriptEnvironment* env)
 {
-    avs_add_function(env, "mlrt_ov", "c+[network_path]s[overlap_w]i[overlap_h]i[tilesize_w]i[tilesize_h]i[device_id]i[builtin]b[builtindir]s[fp16]b[config]s[path_is_serialization]b[list_devices]b[fp16_blacklist_ops]s[dot_path]s", Create_mlrt_ov, 0);
+    avs_add_function(env, "mlrt_ov", "c+[network_path]s[overlap_w]i[overlap_h]i[tilesize_w]i[tilesize_h]i[device]s[builtin]b[builtindir]s[fp16]b[config]s[path_is_serialization]b[list_devices]b[fp16_blacklist_ops]s*[dot_path]s", Create_mlrt_ov, 0);
     return "mlrt_ov";
 }

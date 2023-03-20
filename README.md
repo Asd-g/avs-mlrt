@@ -12,7 +12,7 @@ Custom models can be found [in this doom9 thread](https://forum.doom9.org/showth
 
 - Vulkan device (mlrt_ncnn only)
 
-- Intel GPU (mlrt_ov only)
+- Intel GPU (mlrt_ov only, `device="GPU"` only)
 
 - AviSynth+ r3928 (can be downloaded from [here](https://gitlab.com/uvz/AviSynthPlus-Builds) until official release is uploaded) or later
 

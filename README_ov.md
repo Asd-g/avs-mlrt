@@ -1,9 +1,25 @@
 ## mlrt_ov
 
+Download the required OpenVINO runtimes from [here](https://github.com/Asd-g/avs-mlrt/blob/main/2022.3.7z).
+
+After there are few options:
+- Add the extracted files to PATH.
+- Place the extracted files in the same location as `mlrt_ov.dll`.
+- (Requires [LoadDLL.dll](https://forum.doom9.org/showthread.php?t=173259)) Create `AutoLoadDll.avsi` with following:
+```
+LoadDLL("path_to\tbb.dll")
+LoadDLL("path_to\openvino.dll")
+```
+Then you can place `AutoLoadDll.avsi` in the plugins folder for autoloading or you can import it manually.
+
+### Note:
+
+The plugin isn't tested with `deviec="GPU"` at all due to lack of hardware.
+
 ### Usage:
 
 ```
-mlrt_ov(clip[] input, string "network_path", int "overlap_w", int "overlap_h", int "tilesize_w", int "tilesize_h", int "device_id", bool "builtin", string "builtindir", bool "fp16", string "config", bool "path_is_serialization", bool "list_devices", string[] "fp16_blacklist_ops", string "dot_path")
+mlrt_ov(clip[] input, string "network_path", int "overlap_w", int "overlap_h", int "tilesize_w", int "tilesize_h", string "device", bool "builtin", string "builtindir", bool "fp16", string "config", bool "path_is_serialization", bool "list_devices", string[] "fp16_blacklist_ops", string "dot_path")
 ```
 
 ### Parameters:
@@ -26,9 +42,9 @@ mlrt_ov(clip[] input, string "network_path", int "overlap_w", int "overlap_h", i
     Must be specified when `overlap_w` / `overlap_h` > 0.\
     Default: input_width, input_height.
 
-- device_id\
-    GPU device to use.\
-    By default the default device is selected.
+- device\
+    Device to use - CPU or GPU.\
+    Default: "CPU".
 
 - builtin\
     Whether the models are in the same location with the plugin.\
