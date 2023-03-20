@@ -3,7 +3,6 @@
 #include <atomic>
 #include <cstdint>
 #include <fstream>
-#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -137,7 +136,7 @@ struct avsNcnnData {
         semaphore.release();
     }
 
-    std::unique_ptr<char[]> err;
+    std::string err;
 };
 
 
@@ -218,10 +217,8 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ncnn(AVS_FilterInfo* fi, int n)
             avs_release_video_frame(frame);
         }
 
-        const std::string err{ "mlrt_ncnn: "s + error_message };
-        d->err = std::make_unique<char[]>(std::size(err) + 1);
-        strcpy(d->err.get(), err.c_str());
-        fi->error = d->err.get();
+        d->err = "mlrt_ncnn: "s + error_message;
+        fi->error = d->err.c_str();
 
         return nullptr;
     } };
@@ -374,23 +371,13 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
 
     if (avs_defined(avs_array_elt(args, List_gpu)) ? avs_as_bool(avs_array_elt(args, List_gpu)) : 0)
     {
-        std::string text;
-
         for (auto i{ 0 }; i < ncnn::get_gpu_count(); ++i)
-            text += std::to_string(i) + ": " + ncnn::get_gpu_info(i).device_name() + "\n";
-
-        d->err = std::make_unique<char[]>(text.size() + 1);
-        strcpy(d->err.get(), text.c_str());
+            d->err += std::to_string(i) + ": " + ncnn::get_gpu_info(i).device_name() + "\n";
 
         AVS_Value cl{ avs_new_value_clip(clip) };
-        AVS_Value args_[2]{ cl, avs_new_value_string(d->err.get()) };
-        AVS_Value inv{ avs_invoke(fi->env, "Text", avs_new_value_array(args_, 2), 0) };
-        AVS_Clip* clip1{ avs_take_clip(inv, env) };
+        AVS_Value args_[2]{ cl, avs_new_value_string(d->err.c_str()) };
+        AVS_Value v{ avs_invoke(fi->env, "Text", avs_new_value_array(args_, 2), 0) };
 
-        AVS_Value v{ avs_new_value_clip(clip1) };
-
-        avs_release_clip(clip1);
-        avs_release_value(inv);
         avs_release_value(cl);
         avs_release_clip(clip);
 
@@ -417,12 +404,13 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
         if (--num_plugin_instances == 0)
             ncnn::destroy_gpu_instance();
 
-        const std::string err{ "mlrt_ncnn: "s + error_message };
-        d->err = std::make_unique<char[]>(std::size(err) + 1);
-        strcpy(d->err.get(), err.c_str());
+        d->err = "mlrt_ncnn: "s + error_message;
 
-        return avs_new_value_error(d->err.get());
+        return avs_new_value_error(d->err.c_str());
     } };
+
+    if (avs_check_version(env, 10))
+        return set_error("AviSynth+ version must be r3928 or later.");
 
     std::vector<const AVS_VideoInfo*> in_vis;
     in_vis.reserve(num_nodes);
@@ -571,7 +559,8 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
 #else 
         free(ptr);
 #endif
-    } };
+    }
+};
 
     // ncnn related code
     if (auto device{ ncnn::get_gpu_device(device_id) }; device != nullptr)
