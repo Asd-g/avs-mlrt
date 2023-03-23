@@ -9,6 +9,7 @@ After there are few options:
 ```
 LoadDLL("path_to\tbb.dll")
 LoadDLL("path_to\openvino.dll")
+LoadPlugin("mlrt_ov.dll")
 ```
 Then you can place `AutoLoadDll.avsi` in the plugins folder for autoloading or you can import it manually.
 
