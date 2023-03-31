@@ -1,7 +1,11 @@
 ### A wrapper of avs-mlrt for all bundled models.
 
 
-### Requirements - avs_mlrt, avsresize, fmtconv.
+### Requirements
+# avs_mlrt
+# avsresize - only for mlrt_W2x(model=0/1/2, preprocess=true)
+# fmtconv - for mlrt_W2x(model=6, scale=1) and mlrt_RealESRGAN(scale=...)
+# FillBorders - only for mlrt_W2x(model=6, scale=2)
 
 
 ### Usage ###
@@ -87,10 +91,13 @@ Default 0.
 # conformance (mlrt_CUGAN) (default True): Currently specifies dynamic range compression for cugan-pro.
 
 
-### Version: 1.1.0
+### Version: 1.1.1
 
 
 ### Changelog ###
+#---------------
+# Clamped the input to [0,1] before processing.
+# mlrt_W2x(model=6, scale=2): padded the input (4, 4, 4, 4) before processing.
 #---------------
 # mlrt_W2x: added swin_unet_art models.
 # Added backend "ov".
@@ -141,9 +148,21 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
         c = z_ConvertFormat(c, width * 2, height * 2, filter_param_a=0, filter_param_b=0.75)
     }
 
-    tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
+    if (model == 6 && scale == 2)
+    {
+        AddBorders(c, 4, 4, 4, 4)
+        c = FillBorders(4, 4, 4, 4, 2)
 
-    Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_W2x: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0]) + ", " + String(tile_overlap[1]) + ").")
+        tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
+
+        Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_W2x: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0] - 8) + ", " + String(tile_overlap[1] - 8) + ").")
+    }
+    else
+    {
+        tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
+
+        Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_W2x: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0]) + ", " + String(tile_overlap[1]) + ").")
+    }
 
     folder_path = "waifu2x/" + w2x_models + "/"
 
@@ -172,6 +191,7 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
 
     backend_defaults = backend_defaults(backend)
 
+    c = Expr(c, "x 0 1 clip")
     c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     if (scale == 1 && (Width(c) / width == 2))
@@ -179,6 +199,11 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
         # emulating cv2.resize(interpolation=cv2.INTER_CUBIC)
         # cr: @AkarinVS
         c = fmtc_resample(c, scale=0.5, kernel="impulse", impulse=[-0.1875, 1.375, -0.1875], kovrspl=2)
+    }
+
+    if (model == 6 && scale == 2)
+    {
+        c = Crop(c, 8, 8, -8, -8)
     }
 
     return c
@@ -231,6 +256,7 @@ Function mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "ove
     network_path = "dpir/" + dpir_models + ".onnx"
     backend_defaults = backend_defaults(backend)
 
+    c = Expr(c, "x 0 1 clip")
     return Eval("mlrt_" + backend[0] + "([c, strength], network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 }
 
@@ -259,6 +285,7 @@ Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", i
     backend_defaults = backend_defaults(backend)
 
     clip_org = c
+    c = Expr(c, "x 0 1 clip")
     c = Eval("mlrt_" + backend[0] + "(c, network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     if (Defined(scale))
@@ -336,6 +363,7 @@ Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize
 
     backend_defaults = backend_defaults(backend)
 
+    c = Expr(c, "x 0 1 clip")
     c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     # https://github.com/bilibili/ailab/blob/e102bef22384c629f82552dbec3d6b5bab125639/Real-CUGAN/upcunet_v3.py#L269
