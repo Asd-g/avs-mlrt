@@ -91,10 +91,12 @@ Default 0.
 # conformance (mlrt_CUGAN) (default True): Currently specifies dynamic range compression for cugan-pro.
 
 
-### Version: 1.1.1
+### Version: 1.1.2
 
 
 ### Changelog ###
+#---------------
+# Added support for padding any video dimension to mod4. (mlrt_W2x(model=6, scale=2))
 #---------------
 # Clamped the input to [0,1] before processing.
 # mlrt_W2x(model=6, scale=2): padded the input (4, 4, 4, 4) before processing.
@@ -148,21 +150,26 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
         c = z_ConvertFormat(c, width * 2, height * 2, filter_param_a=0, filter_param_b=0.75)
     }
 
+    l = 0
+    r = 0
+    t = 0
+    b = 0
+
     if (model == 6 && scale == 2)
     {
-        AddBorders(c, 4, 4, 4, 4)
-        c = FillBorders(4, 4, 4, 4, 2)
-
-        tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
-
-        Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_W2x: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0] - 8) + ", " + String(tile_overlap[1] - 8) + ").")
+        bh = 4 - ((Width(c) - 1) % 4 + 1)
+        bv = 4 - ((Height(c) - 1) % 4 + 1)
+        l = BitRShiftL(bh, 1) + 4
+        r = bh - l + 4
+        t = BitRShiftL(bv, 1) + 4
+        b = bv - t + 4
+        AddBorders(c, l, t, r, b)
+        c = FillBorders(left=l, top=t, right=r, bottom=b, mode=2)
     }
-    else
-    {
-        tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
 
-        Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_W2x: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0]) + ", " + String(tile_overlap[1]) + ").")
-    }
+    tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
+
+    Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_W2x: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0]) + ", " + String(tile_overlap[1]) + ").")
 
     folder_path = "waifu2x/" + w2x_models + "/"
 
@@ -203,7 +210,7 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
 
     if (model == 6 && scale == 2)
     {
-        c = Crop(c, 8, 8, -8, -8)
+        c = Crop(c, BitLShiftL(l, 1), BitLShiftL(t, 1), -BitLShiftL(r, 1), -BitLShiftL(b, 1))
     }
 
     return c
