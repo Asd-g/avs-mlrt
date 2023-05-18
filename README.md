@@ -18,9 +18,23 @@ Custom models can be found [in this doom9 thread](https://forum.doom9.org/showth
 
 - Microsoft VisualC++ Redistributable Package 2022 (can be downloaded from [here](https://github.com/abbodi1406/vcredist/releases))
 
-### mlrt_ncnn [usage](https://github.com/Asd-g/avs-mlrt/blob/main/README_ncnn.md)
+### Filters:
 
-### mlrt_ov [usage](https://github.com/Asd-g/avs-mlrt/blob/main/README_ov.md)
+#### mlrt_ncnn
+
+[ncnn](https://github.com/Tencent/ncnn) is a popular AI inference runtime. mlrt_ncnn provides a vulkan based runtime for some AI filters.
+
+It includes support for on-the-fly ONNX to ncnn native format conversion so as to provide a unified interface across all runtimes provided by this project.
+
+[How to use mlrt_ncnn](https://github.com/Asd-g/avs-mlrt/blob/main/README_ncnn.md).
+
+#### mlrt_ov
+
+[OpenVINO](https://docs.openvino.ai/latest/index.html) is an AI inference runtime developed by Intel, mainly targeting x86 CPUs and Intel GPUs.
+
+The mlrt_ov plugin provides optimized pure CPU & Intel GPU runtime for some popular AI filters. Intel GPU supports Gen 8+ on Broadwell+ and the Arc series GPUs.
+
+[How to use mlrt_ov](https://github.com/Asd-g/avs-mlrt/blob/main/README_ov.md).
 
 ### Building:
 
