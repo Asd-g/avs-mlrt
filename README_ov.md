@@ -45,6 +45,7 @@ mlrt_ov(clip[] input, string "network_path", int "overlap_w", int "overlap_h", i
 
 - device\
     Device to use - CPU or GPU.\
+    For example, if there are more than one GPU device, to use the first device - `"GPU.0"`, to use the second device - `"GPU.1"`\
     Default: "CPU".
 
 - builtin\
