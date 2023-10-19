@@ -221,7 +221,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ov(AVS_FilterInfo* fi, int n)
     auto src_tile_w_bytes{ src_tile_w * src_bytes };
     auto src_tile_bytes{ src_tile_h * src_tile_w_bytes };
 
-    constexpr int planes_r[3] = { AVS_PLANAR_R, AVS_PLANAR_G, AVS_PLANAR_B };
+    constexpr int planes_r[3]{ AVS_PLANAR_R, AVS_PLANAR_G, AVS_PLANAR_B };
     constexpr int plane_y{ AVS_PLANAR_Y };
     const int* planes{ (avs_is_rgb(in_vis.front())) ? planes_r : &plane_y };
 
@@ -254,19 +254,19 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ov(AVS_FilterInfo* fi, int n)
     auto w_scale{ dst_tile_w / src_tile_w };
 
     const auto set_error{ [&](const std::string& error_message)
-        {
-            using namespace std::string_literals;
+    {
+        using namespace std::string_literals;
 
-            avs_release_video_frame(dst_frame);
+        avs_release_video_frame(dst_frame);
 
-            for (const auto& frame : src_frames)
-                avs_release_video_frame(frame);
+        for (const auto& frame : src_frames)
+            avs_release_video_frame(frame);
 
-            d->err = "mlrt_ov: "s + error_message;
-            fi->error = d->err.c_str();
+        d->err = "mlrt_ov: "s + error_message;
+        fi->error = d->err.c_str();
 
-            return nullptr;
-        }
+        return nullptr;
+    }
     };
 
     int y = 0;
@@ -411,19 +411,19 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     for (int i{ 0 }; i < num_nodes - 1; ++i)
         d->nodes.emplace_back(avs_take_clip(*(avs_as_array(avs_array_elt(args, Clips)) + (i + 1)), env));
 
-    auto set_error{ [&](const std::string& error_message)
-        {
-            using namespace std::string_literals;
+    const auto set_error{ [&](const std::string& error_message)
+    {
+        using namespace std::string_literals;
 
-            avs_release_clip(clip);
+        avs_release_clip(clip);
 
-            for (const auto& node : d->nodes)
-                avs_release_clip(node);
+        for (const auto& node : d->nodes)
+            avs_release_clip(node);
 
-            d->err = "mlrt_ov: "s + error_message;
+        d->err = "mlrt_ov: "s + error_message;
 
-            return avs_new_value_error(d->err.c_str());
-        }
+        return avs_new_value_error(d->err.c_str());
+    }
     };
 
     if (avs_check_version(env, 10))
@@ -438,7 +438,8 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     if (auto err{ checkNodes(in_vis) }; err.has_value())
         return set_error(err.value());
 
-    if (auto err = checkNodes(in_vis); err.has_value()) {
+    if (auto err = checkNodes(in_vis); err.has_value())
+    {
         return set_error(err.value());
     }
 
@@ -472,7 +473,7 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     if (tile_w != -4525)
     { // manual specification triggered
         if (tile_h == -4525)
-            tile_h = tile_w;
+            tile_h = (tile_w < fi->vi.height) ? tile_w : fi->vi.height;
     }
     else
     {
@@ -480,15 +481,18 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         {
             if (d->overlap_w != 0)
                 return set_error("tilesize_w must be specified");
-
             if (d->overlap_h != 0)
                 return set_error("tilesize_h must be specified");
+
+            tile_h = fi->vi.height;
         }
 
-        // set tile size to video dimensions
         tile_w = fi->vi.width;
-        tile_h = fi->vi.height;
     }
+    if (tile_w > fi->vi.width)
+        return set_error("tilesize_w must be equal to or less than " + std::to_string(fi->vi.width));
+    if (tile_h > fi->vi.height)
+        return set_error("tilesize_h must be equal to or less than " + std::to_string(fi->vi.height));
     if (tile_w - 2 * d->overlap_w <= 0)
         return set_error("overlap_w too large");
     if (tile_h - 2 * d->overlap_h <= 0)
@@ -527,7 +531,8 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
 
 
     auto result = loadONNX(path_view, tile_w, tile_h, path_is_serialization);
-    if (std::holds_alternative<std::string>(result)) {
+    if (std::holds_alternative<std::string>(result))
+    {
         return set_error(std::get<std::string>(result));
     }
 
@@ -539,12 +544,12 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         const int num{ (avs_defined(avs_array_elt(args, Fp16_blacklist_ops))) ? avs_array_size(avs_array_elt(args, Fp16_blacklist_ops)) : 0 };
         if (num == 0)
             fp16_blacklist_ops = {
-                "ArrayFeatureExtractor", "Binarizer", "CastMap", "CategoryMapper",
-                "DictVectorizer", "FeatureVectorizer", "Imputer", "LabelEncoder",
-                "LinearClassifier", "LinearRegressor", "Normalizer", "OneHotEncoder",
-                "SVMClassifier", "SVMRegressor", "Scaler", "TreeEnsembleClassifier",
-                "TreeEnsembleRegressor", "ZipMap", "NonMaxSuppression", "TopK",
-                "RoiAlign", "Range", "CumSum", "Min", "Max"
+            "ArrayFeatureExtractor", "Binarizer", "CastMap", "CategoryMapper",
+            "DictVectorizer", "FeatureVectorizer", "Imputer", "LabelEncoder",
+            "LinearClassifier", "LinearRegressor", "Normalizer", "OneHotEncoder",
+            "SVMClassifier", "SVMRegressor", "Scaler", "TreeEnsembleClassifier",
+            "TreeEnsembleRegressor", "ZipMap", "NonMaxSuppression", "TopK",
+            "RoiAlign", "Range", "CumSum", "Min", "Max"
         };
         else
         {
@@ -636,7 +641,8 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         {
             d->executable_network = core.LoadNetwork(network, device, config);
         }
-        catch (const InferenceEngine::Exception& e) {
+        catch (const InferenceEngine::Exception& e)
+        {
             return set_error(e.what());
         }
 
