@@ -26,7 +26,7 @@ Custom models can be found [in this doom9 thread](https://forum.doom9.org/showth
 
 It includes support for on-the-fly ONNX to ncnn native format conversion so as to provide a unified interface across all runtimes provided by this project.
 
-[How to use mlrt_ncnn](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ncnn/README_ncnn.md).
+[How to use mlrt_ncnn](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ncnn/README.md).
 
 #### mlrt_ov
 
@@ -34,7 +34,7 @@ It includes support for on-the-fly ONNX to ncnn native format conversion so as t
 
 The mlrt_ov plugin provides optimized pure CPU & Intel GPU runtime for some popular AI filters. Intel GPU supports Gen 8+ on Broadwell+ and the Arc series GPUs.
 
-[How to use mlrt_ov](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ov/README_ov.md).
+[How to use mlrt_ov](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ov/README.md).
 
 ### Building:
 
