@@ -36,8 +36,7 @@ extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
 [[nodiscard]]
 static std::optional<std::string> checkNodes(
     const std::vector<const AVS_VideoInfo*>& vis
-) noexcept
-{
+) noexcept {
 
     for (const auto& vi : vis)
     {
@@ -54,13 +53,11 @@ static std::optional<std::string> checkNodes(
     return {};
 }
 
-struct TicketSemaphore
-{
+struct TicketSemaphore {
     std::atomic<intptr_t> ticket{};
     std::atomic<intptr_t> current{};
 
-    void acquire() noexcept
-    {
+    void acquire() noexcept {
         intptr_t tk{ ticket.fetch_add(1, std::memory_order_acquire) };
         while (true)
         {
@@ -78,8 +75,7 @@ struct TicketSemaphore
         }
     }
 
-    void release() noexcept
-    {
+    void release() noexcept {
         current.fetch_add(1, std::memory_order_release);
 #if __cpp_lib_atomic_wait
         current.notify_all();
@@ -88,8 +84,7 @@ struct TicketSemaphore
 };
 
 // per-stream context
-struct Resource
-{
+struct Resource {
     std::unique_ptr<ncnn::VkCompute> cmd;
     ncnn::VkAllocator* blob_vkallocator;
     ncnn::VkAllocator* staging_vkallocator;
@@ -103,8 +98,7 @@ struct Resource
 
 static std::atomic<int> num_plugin_instances{};
 
-struct avsNcnnData
-{
+struct avsNcnnData {
     std::vector<AVS_Clip*> nodes;
 
     int overlap_w, overlap_h;
@@ -124,8 +118,7 @@ struct avsNcnnData
     int input_index;
     int output_index;
 
-    int acquire() noexcept
-    {
+    int acquire() noexcept {
         semaphore.acquire();
         {
             std::lock_guard<std::mutex> lock(ticket_lock);
@@ -135,8 +128,7 @@ struct avsNcnnData
         }
     }
 
-    void release(int ticket) noexcept
-    {
+    void release(int ticket) noexcept {
         {
             std::lock_guard<std::mutex> lock(ticket_lock);
             tickets.push_back(ticket);
@@ -185,8 +177,8 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ncnn(AVS_FilterInfo* fi, int n)
     auto src_tile_w{ src_tile_shape[3] };
     auto src_tile_w_bytes{ src_tile_w * avs_component_size(in_vis.front()) };
 
-    constexpr int planes_r[3]{ AVS_PLANAR_R, AVS_PLANAR_G, AVS_PLANAR_B };
-    constexpr int plane_y{ AVS_PLANAR_Y };
+    const int planes_r[3] = { AVS_PLANAR_R, AVS_PLANAR_G, AVS_PLANAR_B };
+    const int plane_y{ AVS_PLANAR_Y };
     const int* planes{ (avs_is_rgb(in_vis.front())) ? planes_r : &plane_y };
 
     std::vector<const uint8_t*> src_ptrs;
@@ -213,7 +205,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ncnn(AVS_FilterInfo* fi, int n)
     auto w_scale{ dst_tile_w / src_tile_w };
 
     const auto set_error{ [&](const std::string& error_message)
-    {
+{
         using namespace std::string_literals;
 
         d->release(ticket);
@@ -221,7 +213,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ncnn(AVS_FilterInfo* fi, int n)
         avs_release_video_frame(dst_frame);
 
         for (const auto& frame : src_frames)
-        {
+{
             avs_release_video_frame(frame);
         }
 
@@ -400,8 +392,8 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
     for (int i{ 0 }; i < num_nodes - 1; ++i)
         d->nodes.emplace_back(avs_take_clip(*(avs_as_array(avs_array_elt(args, Clips)) + (i + 1)), env));
 
-    const auto set_error{ [&](const std::string& error_message)
-    {
+    auto set_error{ [&](const std::string& error_message)
+{
         using namespace std::string_literals;
 
         avs_release_clip(clip);
@@ -459,7 +451,7 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
     if (tile_w != -4525)
     { // manual specification triggered
         if (tile_h == -4525)
-            tile_h = (tile_w < fi->vi.height) ? tile_w : fi->vi.height;
+            tile_h = tile_w;
     }
     else
     {
@@ -467,18 +459,15 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
         {
             if (d->overlap_w != 0)
                 return set_error("tilesize_w must be specified");
+
             if (d->overlap_h != 0)
                 return set_error("tilesize_h must be specified");
-
-            tile_h = fi->vi.height;
         }
 
+        // set tile size to video dimensions
         tile_w = fi->vi.width;
+        tile_h = fi->vi.height;
     }
-    if (tile_w > fi->vi.width)
-        return set_error("tilesize_w must be equal to or less than " + std::to_string(fi->vi.width));
-    if (tile_h > fi->vi.height)
-        return set_error("tilesize_h must be equal to or less than " + std::to_string(fi->vi.height));
     if (tile_w - 2 * d->overlap_w <= 0)
         return set_error("overlap_w too large");
     if (tile_h - 2 * d->overlap_h <= 0)
@@ -531,7 +520,7 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
     auto onnx_model{ std::move(std::get<ONNX_NAMESPACE::ModelProto>(result)) };
     {
         auto int64ToIntS{ [&](int64_t i)
-        {
+{
             if (i > INT_MAX)
                 return INT_MAX;
             else if (i < INT_MIN)
@@ -571,7 +560,7 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
         free(ptr);
 #endif
     }
-    };
+};
 
     // ncnn related code
     if (auto device{ ncnn::get_gpu_device(device_id) }; device != nullptr)
