@@ -93,10 +93,10 @@ Default 0.
 */
 /*
 mlrt_SAFA:
-0: v0.1
-1: v0.2
-2: v0.3
-3: v0.4
+0: v0.1 (not supported by ncnn)
+1: v0.2 (not supported by ncnn)
+2: v0.3 (not supported by ncnn)
+3: v0.4 (not supported by ncnn)
 */
 #---------------
 # preprocess (mlrt_W2x) (default True): Whether to upscale 2x before feeding the image to the models.
