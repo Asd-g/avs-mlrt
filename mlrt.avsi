@@ -3,7 +3,7 @@
 
 ### Requirements
 # avs_mlrt
-# avsresize - only for mlrt_W2x(model=0/1/2, preprocess=true)
+# avsresize - for mlrt_W2x(model=0/1/2, preprocess=true), mlrt_W2x(model=8, scale < 4)
 # fmtconv - for mlrt_W2x(model=6, scale=1) and mlrt_RealESRGAN(scale=...)
 # FillBorders - only for mlrt_W2x(model=6, scale=2)
 
@@ -17,6 +17,8 @@
 # mlrt_RealESRGAN/mlrt_RealESRGANv2(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", float "scale")
 #
 # mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize", int "overlap_w", int "overlap_h", val "backend", int "version", bool "conformance")
+#
+# mlrt_SAFA(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", int "adaptive")
 ###
 ## Parameters ##
 #---------------
@@ -49,7 +51,7 @@
 # mlrt_RealESRGAN default: not specified.
 # mlrt_CUGAN: default 2; must be 2, 3, or 4.
 #---------------
-# model (mlrt_W2x, mlrt_DPIR, mlrt_RealESRGAN): What model to be used.
+# model (mlrt_W2x, mlrt_DPIR, mlrt_RealESRGAN, mlrt_SAFA): What model to be used.
 # Folder "models" must be in the same location as mlrt_xxx.dll.
 /*
 mlrt_W2x:
@@ -60,7 +62,10 @@ mlrt_W2x:
 4: "upconv_7_photo"
 5: "upresnet10"
 6: "cunet"
-7: "swin_unet_art"
+7: "swin_unet_art" (not supported by ncnn)
+8: "swin_unet_photo" (not supported by ncnn)
+9: "swin_unet_photo_v2" (not supported by ncnn)
+10: "swin_unet_art_scan" (not supported by ncnn)
 Default 6.
 */
 /*
@@ -76,7 +81,22 @@ mlrt_RealESRGAN:
 0: "animevideo-xsx2" # v2
 1: "animevideo-xsx4" # v2
 2: "animevideov3" # v3 4x
+# contributed: janaiV2(2x) https://github.com/the-database/mpv-upscale-2x_animejanai/releases/tag/2.0.0 maintainer: hooke007
+3: "animejanaiV2L1"
+4: "animejanaiV2L2"
+5: "animejanaiV2L3"
+# contributed: janaiV3-hd(2x) https://github.com/the-database/mpv-upscale-2x_animejanai/releases/tag/3.0.0 maintainer: hooke007
+6: "animejanaiV3-HD-L1"
+7: "animejanaiV3-HD-L2"
+8: "animejanaiV3-HD-L3"
 Default 0.
+*/
+/*
+mlrt_SAFA:
+0: v0.1
+1: v0.2
+2: v0.3
+3: v0.4
 */
 #---------------
 # preprocess (mlrt_W2x) (default True): Whether to upscale 2x before feeding the image to the models.
@@ -89,12 +109,22 @@ Default 0.
 # 2: pro (only models for "noise" in [-1, 0, 3] and "scale" in [2, 3] are published currently)
 #---------------
 # conformance (mlrt_CUGAN) (default True): Currently specifies dynamic range compression for cugan-pro.
+#---------------
+# adaptive (mlrt_SAFA) (default 0).
+# 0: non_adaptive
+# 1: adaptive1x - use adaptive path only at 1x scale
+# 2: adaptive - use adaptive path at 1x, 1/2x and 1/4x scales, proposed algorithm
 
 
-### Version: 1.1.2
+### Version: 1.1.3
 
 
 ### Changelog ###
+#---------------
+# 1.1.3
+# mlrt_W2x: added more swin_unet_x models.
+# mlrt_RealESRGAN: added esrgan janai models.
+# Added mlrt_SAFA.
 #---------------
 # Added support for padding any video dimension to mod4. (mlrt_W2x(model=6, scale=2))
 #---------------
@@ -115,7 +145,9 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     noise = Default(noise, -1)
     scale = Default(scale, 2)
     model = Default(model, 6)
-    overlap_w = Default(overlap_w, Select(model, 8, 8, 8, 8, 8, 4, 4, 4))
+    Assert(model >= 0 && model <= 10, "mlrt_W2x: model must be 0..10")
+
+    overlap_w = Default(overlap_w, Select(model, 8, 8, 8, 8, 8, 4, 4, 4, 4, 4, 4))
     overlap_h = Default(overlap_h, overlap_w)
     preprocess = Default(preprocess, True)
     backend = backend_def(backend)
@@ -123,13 +155,30 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     Assert(ComponentSize(c) == 4, "mlrt_W2x: clip must be in 32-bit planar format.")
     Assert(noise >= -1 && noise <= 3, "mlrt_W2x: noise must be -1, 0, 1, 2, or 3.")
     Assert(scale == 1 || scale == 2 || scale == 4, "mlrt_W2x: scale must be 1, 2, or 4.")
-    Assert(model >= 0 && model <= 7, "mlrt_W2x: model must be 0, 1, 2, 3, 4, 5, 6, or 7.")
     Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_W2x: backend must be either ncnn or ov.")
+    if (backend[0] == "ncnn" && model > 6)
+    {
+        Assert(false, "mlrt_W2x: not supported model by ncnn.")
+    }
 
-    w2x_models = Select(model, "anime_style_art", "anime_style_art_rgb", "photo", "upconv_7_anime_style_art_rgb", "upconv_7_photo", "upresnet10", "cunet", "swin_unet_art")
+    w2x_models = Select(model,
+        \ "anime_style_art",
+        \ "anime_style_art_rgb",
+        \ "photo",
+        \ "upconv_7_anime_style_art_rgb",
+        \ "upconv_7_photo",
+        \ "upresnet10",
+        \ "cunet",
+        \ "swin_unet_art",
+        \ "swin_unet_photo",
+        \ "swin_unet_photo_v2",
+        \ "swin_unet_art_scan")
 
     Assert(!(model == 0 && noise == 0), "mlrt_W2x: anime_style_art model does not support noise reduction level 0.")
-    Assert((model < 7 && scale < 4) || model == 7, "mlrt_W2x: scale must be 1 or 2.")
+    if (model < 7 && scale == 4)
+    {
+        Assert(false, "mlrt_W2x: scale must be 1 or 2.")
+    }
 
     if (model == 0)
     {
@@ -141,13 +190,12 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     }
 
     multiple = (model == 6) ? 4 : 1
-    width = Width(c)
-    height = Height(c)
+    width_ = Width(c)
 
     if (preprocess && (model == 0 || model == 1 || model == 2))
     {
         # emulating cv2.resize(interpolation=cv2.INTER_CUBIC)
-        c = z_ConvertFormat(c, width * 2, height * 2, filter_param_a=0, filter_param_b=0.75)
+        c = z_ConvertFormat(c, BitLShiftL(width_, 1), BitLShiftL(height_, 1), filter_param_a=0, filter_param_b=0.75)
     }
 
     l = 0
@@ -187,7 +235,7 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
 
         model_name = (noise == -1) ? "scale2.0x_model.onnx" : ("noise" + String(noise) + "_" + scale_name + "model.onnx")
     }
-    else
+    else if (model == 7)
     {
         Assert(noise != -1 && scale != 1, "mlrt_W2x: swin_unet model for noise=-1 and scale=1 does not exist.")
 
@@ -195,17 +243,25 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
 
         model_name = (noise > -1) ? (scale == 1) ? ("noise" + String(noise) + ".onnx") : ("noise" + String(noise) + "_" + scale_name + ".onnx") : (scale_name + ".onnx")
     }
+    else
+    {
+        model_name = (noise == -1) ? "scale4x.onnx" : ("noise" + String(noise) + "_scale4x.onnx")
+    }
 
     backend_defaults = backend_defaults(backend)
 
     c = Expr(c, "x 0 1 clip")
     c = Eval("mlrt_" + backend[0] + "(c, network_path=folder_path+model_name, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
-    if (scale == 1 && (Width(c) / width == 2))
+    if (model < 8 && scale == 1 && (Width(c) / width_ == 2))
     {
         # emulating cv2.resize(interpolation=cv2.INTER_CUBIC)
         # cr: @AkarinVS
         c = fmtc_resample(c, scale=0.5, kernel="impulse", impulse=[-0.1875, 1.375, -0.1875], kovrspl=2)
+    }
+    else if (model > 7 && scale < 4)
+    {
+        c = z_ConvertFormat(c, width=BitRShiftL(Width(c) * scale, 2), height=BitRShiftL(Height(c) * scale, 2), filter_param_a=0, filter_param_b=0.5)
     }
 
     if (model == 6 && scale == 2)
@@ -276,29 +332,38 @@ Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", i
 
     Assert(ComponentSize(c) == 4, "mlrt_RealESRGAN: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_RealESRGAN: clip must be of planar RGB color family.")
-    Assert(model >= 0 && model <= 2, "mlrt_RealESRGAN: model must be 0, 1, or 2.")
+    Assert(model >= 0 && model <= 8, "mlrt_RealESRGAN: model must be between 0..8.")
     Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_RealESRGAN: backend must be either ncnn or ov.")
 
     # v2, v2, v3 4x
-    realesrgan_models = Select(model, "animevideo-xsx2", "animevideo-xsx4", "animevideov3")
+    realesrgan_models = Select(model,
+        \ "RealESRGANv2-animevideo-xsx2",
+        \ "RealESRGANv2-animevideo-xsx4",
+        \ "realesr-animevideov3",
+        \ "animejanaiV2L1",
+        \ "animejanaiV2L2",
+        \ "animejanaiV2L3",
+        \ "animejanaiV3-HD-L1",
+        \ "animejanaiV3-HD-L2",
+        \ "animejanaiV3-HD-L3")
 
     multiple = 1
 
     tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
 
-    network_path = (model == 0 || model == 1) ? ("RealESRGANv2/" + "RealESRGANv2-" + realesrgan_models + ".onnx") : \
-    ("RealESRGANv2/" + "realesr-" + realesrgan_models + ".onnx")
+    network_path = "RealESRGANv2/" + realesrgan_models + ".onnx"
 
     backend_defaults = backend_defaults(backend)
 
-    clip_org = c
+    width_ = Width(c)
+    height_ = height(c)
     c = Expr(c, "x 0 1 clip")
     c = Eval("mlrt_" + backend[0] + "(c, network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
 
     if (Defined(scale))
     {
-        scale_h = Width(c) / Width(clip_org)
-        scale_v = Height(c) / Height(clip_org)
+        scale_h = Width(c) / width_
+        scale_v = Height(c) / height_
 
         Assert(scale_h == scale_v, "mlrt_RealESRGAN: scale_h must be equal to scale_v.")
 
@@ -346,9 +411,6 @@ Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize
 
     multiple = 2
 
-    width = Width(c)
-    height = Height(c)
-
     tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
 
     Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_CUGAN: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0]) + ", " + String(tile_overlap[1]) + ").")
@@ -377,6 +439,59 @@ Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize
     if (conformance && version == 2)
     {
         c = Expr(c, "x 0.15 - 0.7 /")
+    }
+
+    return c
+}
+
+Function mlrt_SAFA(clip c, val "tiles", val "tilesize", int "overlap_w", int "overlap_h", int "model", val "backend", int "adaptive")
+{
+    model = Default(model, 0)
+    overlap_w = Default(overlap_w, 16)
+    overlap_h = Default(overlap_h, overlap_w)
+    backend = backend_def(Default(backend, "ov"))
+    adaptive = Default(adaptive, 0)
+
+    Assert(ComponentSize(c) == 4, "mlrt_SAFA: clip must be in 32-bit planar format.")
+    Assert(IsPlanarRGB(c), "mlrt_SAFA: clip must be of planar RGB color family.")
+    Assert(model >= 0 && model <= 3, "mlrt_SAFA: model must be between 0..3.")
+    Assert(backend[0] == "ov", "mlrt_SAFA: backend must be ov.")
+    Assert(adaptive >= 0 || adaptive <= 2, "mlrt_SAFA: adaptive must be between 0..2.")
+
+    safa_models = Select(model,
+        \ "v0.1",
+        \ "v0.2",
+        \ "v0.3",
+        \ "v0.4")
+
+    adaptive_models = Select(adaptive,
+        \ "non_adaptive",
+        \ "adaptive1x",
+        \ "adaptive")
+
+    multiple = (model <= 2) ? 8 : 16
+
+    tile_overlap = calc_tilesize(Width(c), Height(c), multiple, overlap_w, overlap_h, tiles, tilesize)
+
+    Assert(!(tile_overlap[0] % multiple != 0 || tile_overlap[1] % multiple != 0), "mlrt_SAFA: tile size must be divisible by " + String(multiple) + "(" + String(tile_overlap[0]) + ", " + String(tile_overlap[1]) + ").")
+
+    network_path = "safa/" + "safa_" + safa_models + "_" + adaptive_models + ".onnx"
+
+    backend_defaults = backend_defaults(backend)
+
+    c = Expr(c, "x 0 1 clip")
+
+    source_frame_num = FrameCount(c)
+    half_frame_num = BitRShiftL(source_frame_num - 1, 1)
+    clips = (source_frame_num % 2 == 0) ? [Trim(c, 0, half_frame_num), Trim(c, half_frame_num + 1, 0)] : [Trim(c, 0, half_frame_num), Trim(c, half_frame_num + 1, 0) + Trim(c, source_frame_num, -1)]
+
+    clip2x = Eval("mlrt_" + backend[0] + "(clips, network_path=network_path, overlap_w=tile_overlap[2], overlap_h=tile_overlap[3], tilesize_w=tile_overlap[0], tilesize_h=tile_overlap[1], builtin=true" + backend_defaults + ")")
+
+    c = Interleave(Crop(clip2x, 0, 0, 0, BitRShiftL(Height(clip2x), 1)), Crop(clip2x, 0, BitRShiftL(Height(clip2x), 1), 0, 0))
+
+    if (source_frame_num != FrameCount(c))
+    {
+        c = Trim(c, 0, FrameCount(c) - 2)
     }
 
     return c
