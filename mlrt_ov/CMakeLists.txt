@@ -17,7 +17,6 @@ add_library(mlrt_ov SHARED
 )
 
 target_include_directories(mlrt_ov PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${Boost_INCLUDE_DIRS}
     ${ONNX_INCLUDE_DIRS}
 )
