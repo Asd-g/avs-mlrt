@@ -438,10 +438,6 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     if (auto err{ checkNodes(in_vis) }; err.has_value())
         return set_error(err.value());
 
-    if (auto err = checkNodes(in_vis); err.has_value()) {
-        return set_error(err.value());
-    }
-
     const char* device{ avs_defined(avs_array_elt(args, Device)) ? (avs_as_string(avs_array_elt(args, Device))) : "CPU" };
 
     d->overlap_w = avs_defined(avs_array_elt(args, Overlap_w)) ? (avs_as_int(avs_array_elt(args, Overlap_w))) : -4525;
