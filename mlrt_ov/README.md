@@ -1,6 +1,6 @@
 ## mlrt_ov
 
-Download the required OpenVINO runtimes from [here](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ov/2022.3.1.7z).
+Download the required OpenVINO runtimes (`openvino_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
 
 How to load the above runtimes:
 - (Optional) Add the extracted files to PATH.

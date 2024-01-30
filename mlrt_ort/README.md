@@ -1,11 +1,11 @@
 ## mlrt_ort
 
-Download the ONNX runtimes from [here](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ort/onnxRT30012024.7z).
+Download the ONNX runtimes (`onnxruntime_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
 
-For `mlrt_ort(... provider="dml")` download the DirectML runtimes from [here](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ort/DMLRT30012024.7z).
+For `mlrt_ort(... provider="dml")` download the DirectML runtimes (`directml_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
 
-For `mlrt_ort(... provider="cuda")` install [NVIDIA cuDNN](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-windows) and download the CUDA runtimes (cuda 12.3.1 + cudnn 8.9.6, driver version >= 525, GPU >= 10xx) from [here](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ort/CUDART30012024.7z).<br>
-Different version of CUDA runtimes can be downloaded from [here](https://github.com/AmusementClub/vs-mlrt/releases) (take note to `Version information:` section). Download `VSORT-Windows-x64...` and take `onnxruntime.dll`, `onnxruntime_providers_cuda.dll`, `onnxruntime_providers_shared.dll`.
+For `mlrt_ort(... provider="cuda")` download the CUDA runtimes (`cuda_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases). ([credits](https://github.com/AmusementClub/vs-mlrt/releases))<br>
+Different version of CUDA runtimes can be downloaded from [here](https://github.com/AmusementClub/vs-mlrt/releases) (take note to `Version information:` section). Download `vsmlrt-windows-x64-cuda...` and take the files from `vsort` and `vsmlrt-cuda`.
 
 How to load the above runtimes:
 - (Optional) Add the extracted files to PATH.
@@ -18,16 +18,16 @@ How to load the above runtimes:
 
 
 # Uncomment if CUDA will be used.
-#LoadDLL("cudart64_XX.dll")
-#LoadDLL("cublasLt64_XX.dll")
-#LoadDLL("cublas64_XX.dll")
-#LoadDLL("cufft64_XX.dll")
+#LoadDLL("cudart64_12.dll")
+#LoadDLL("cublasLt64_12.dll")
+#LoadDLL("cublas64_12.dll")
+#LoadDLL("cufft64_11.dll")
 #LoadDLL("zlibwapi.dll") # cuDNN version 8.3.0+ depends on zlib as a shared library dependency
-#LoadDLL("cudnn_ops_infer64_XX.dll")
-#LoadDLL("cudnn_cnn_infer64_XX.dll")
-#LoadDLL("cudnn_adv_infer64_XX.dll")
-#LoadDLL("cudnn64_XX.dll")
-#LoadDLL("cupti64_XX.dll")
+#LoadDLL("cudnn_ops_infer64_8.dll")
+#LoadDLL("cudnn_cnn_infer64_8.dll")
+#LoadDLL("cudnn_adv_infer64_8.dll")
+#LoadDLL("cudnn64_8.dll")
+#LoadDLL("cupti64_2023.3.1.dll")
 #LoadDLL("path_to\onnxruntime_providers_shared.dll")
 #LoadDLL("path_to\onnxruntime_providers_cuda.dll")
 
