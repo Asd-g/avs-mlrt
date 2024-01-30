@@ -404,7 +404,9 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ort(AVS_FilterInfo* fi, int n)
         src_frames[i] = avs_get_frame(d->nodes[i - 1], n);
         if (!src_frames[i])
         {
-            avs_release_frame(src_frames[i - 1]);
+            while (--i >= 0)
+                avs_release_frame(src_frames[i]);
+
             return nullptr;
         }
     }
