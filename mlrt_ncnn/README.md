@@ -53,3 +53,10 @@ mlrt_ncnn(clip[] input, string "network_path", int "overlap_w", int "overlap_h",
 - list_gpu<br>
     Simply print a list of available GPU devices on the frame and does nothing else.<br>
     Default: False.
+
+When `overlap` and `tilesize` are not specified, the filter will internally try to resize the network to fit the input clips.<br>
+This might not always work (for example, the network might require the width to be divisible by 8), and the filter will error out in this case.
+
+The general rule is to either:
+1. Left out `overlap`, `tilesize` at all and just process the input frame in one tile, or
+2. set them so that the frame is processed in `tilesize_w` x `tilesize_h` tiles, and adjacent tiles will have an overlap of `overlap_w` x `overlap_h` pixels on each direction. The overlapped region will be throw out so that only internal output pixels are used.
