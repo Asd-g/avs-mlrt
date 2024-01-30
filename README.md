@@ -48,6 +48,12 @@ The mlrt_ort plugin provides optimized CPU, CUDA GPU and DX12 GPU runtime for so
 
 [How to use mlrt_ort](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ort/README.md).
 
+### Benchmarks
+
+Device specific benchmarks can be found [here](https://github.com/AmusementClub/vs-mlrt/wiki#device-specific-benchmarks).
+
+DirectML benchmarks can be found [here](https://github.com/AmusementClub/vs-mlrt/releases/tag/v13.2).
+
 ### Building:
 
 Requirements:
