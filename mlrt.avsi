@@ -37,7 +37,7 @@
 # mlrt_CUGAN overlap_w default: 4.
 # overlap_h default: overlap_w.
 #---------------
-# backend (default "ncnn"): What backend to be used (currently ncnn and ov) and its tuning parameters.
+# backend (default "ncnn"): What backend to be used (ncnn, ov, or ort) and its tuning parameters.
 # It can be specified as single string.
 # If specified as array of strings, the first element must be the backend type and the rest one are the tuning parameters.
 # For example, backend=["ncnn",  "fp16=true"] - backend type is "ncnn" and fp16 mode is True.
@@ -61,11 +61,11 @@ mlrt_W2x:
 3: "upconv_7_anime_style_art_rgb"
 4: "upconv_7_photo"
 5: "upresnet10"
-6: "cunet"
+6: "cunet" (not supported by ort(cuda))
 7: "swin_unet_art" (not supported by ncnn)
-8: "swin_unet_photo" (not supported by ncnn)
-9: "swin_unet_photo_v2" (not supported by ncnn)
-10: "swin_unet_art_scan" (not supported by ncnn)
+8: "swin_unet_photo" (not supported by ncnn, ort(cuda/dml))
+9: "swin_unet_photo_v2" (not supported by ncnn, ort(cuda/dml))
+10: "swin_unet_art_scan" (not supported by ncnn, ort(cuda/dml))
 Default 6.
 */
 /*
@@ -116,10 +116,13 @@ mlrt_SAFA:
 # 2: adaptive - use adaptive path at 1x, 1/2x and 1/4x scales, proposed algorithm
 
 
-### Version: 1.1.3
+### Version: 1.1.4
 
 
 ### Changelog ###
+#---------------
+# 1.1.4
+# Added support for mlrt_ort.
 #---------------
 # 1.1.3
 # mlrt_W2x: added more swin_unet_x models.
@@ -150,12 +153,11 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     overlap_w = Default(overlap_w, Select(model, 8, 8, 8, 8, 8, 4, 4, 4, 4, 4, 4))
     overlap_h = Default(overlap_h, overlap_w)
     preprocess = Default(preprocess, True)
-    backend = backend_def(backend)
+    backend = backend_define(backend, "mlrt_W2x")
 
     Assert(ComponentSize(c) == 4, "mlrt_W2x: clip must be in 32-bit planar format.")
     Assert(noise >= -1 && noise <= 3, "mlrt_W2x: noise must be -1, 0, 1, 2, or 3.")
     Assert(scale == 1 || scale == 2 || scale == 4, "mlrt_W2x: scale must be 1, 2, or 4.")
-    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_W2x: backend must be either ncnn or ov.")
     if (backend[0] == "ncnn" && model > 6)
     {
         Assert(false, "mlrt_W2x: not supported model by ncnn.")
@@ -277,11 +279,10 @@ Function mlrt_DPIR(clip c, val "strength", val "tiles", val "tilesize", int "ove
     model = Default(model, 0)
     overlap_w = Default(overlap_w, 0)
     overlap_h = Default(overlap_h, overlap_w)
-    backend = backend_def(backend)
+    backend = backend_define(backend, "mlrt_DPIR")
 
     Assert(ComponentSize(c) == 4, "mlrt_DPIR: clip must be in 32-bit planar format.")
     Assert(model >= 0 && model <= 3, "mlrt_DPIR: model must be 0, 1, 2, or 3.")
-    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_DPIR: backend must be either ncnn or ov.")
 
     dpir_models = Select(model, "drunet_gray", "drunet_color", "drunet_deblocking_grayscale", "drunet_deblocking_color")
 
@@ -328,12 +329,11 @@ Function mlrt_RealESRGAN(clip c, val "tiles", val "tilesize", int "overlap_w", i
     model = Default(model, 0)
     overlap_w = Default(overlap_w, 8)
     overlap_h = Default(overlap_h, overlap_w)
-    backend = backend_def(backend)
+    backend = backend_define(backend, "mlrt_RealESRGAN")
 
     Assert(ComponentSize(c) == 4, "mlrt_RealESRGAN: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_RealESRGAN: clip must be of planar RGB color family.")
     Assert(model >= 0 && model <= 8, "mlrt_RealESRGAN: model must be between 0..8.")
-    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_RealESRGAN: backend must be either ncnn or ov.")
 
     # v2, v2, v3 4x
     realesrgan_models = Select(model,
@@ -399,13 +399,12 @@ Function mlrt_CUGAN(clip c, int "noise", int "scale", val "tiles", val "tilesize
     overlap_h = Default(overlap_h, overlap_w)
     version = Default(version, 1)
     conformance = Default(conformance, True) # currently specifies dynamic range compression for cugan-pro
-    backend = backend_def(backend)
+    backend = backend_define(backend, "mlrt_CUGAN")
 
     Assert(ComponentSize(c) == 4, "mlrt_CUGAN: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_CUGAN: clip must be of planar RGB color family.")
     Assert(noise >= -1 && noise <= 3, "mlrt_CUGAN: noise must be -1, 0, 1, 2, or 3.")
     Assert(scale == 2 || scale == 3 || scale == 4, "mlrt_CUGAN: scale must be 2, 3, or 4.")
-    Assert(backend[0] == "ncnn" || backend[0] == "ov", "mlrt_CUGAN: backend must be either ncnn or ov.")
     Assert(version == 1 || version == 2, "mlrt_CUGAN: version must be 1 (legacy) or 2 (pro)")
     Assert(!(scale != 2 && (noise == 1 || noise == 2)), "mlrt_CUGAN: scale=" + String(scale) + " model.\nmlrt_CUGAN does not support noise reduction level " + String(noise) + ".")
 
@@ -449,7 +448,7 @@ Function mlrt_SAFA(clip c, val "tiles", val "tilesize", int "overlap_w", int "ov
     model = Default(model, 0)
     overlap_w = Default(overlap_w, 16)
     overlap_h = Default(overlap_h, overlap_w)
-    backend = backend_def(Default(backend, "ov"))
+    backend = backend_define(Default(backend, "ov"), "mlrt_SAFA")
     adaptive = Default(adaptive, 0)
 
     Assert(ComponentSize(c) == 4, "mlrt_SAFA: clip must be in 32-bit planar format.")
@@ -528,10 +527,17 @@ Function calc_size(int width, int tiles, int overlap, int multiple)
     return Ceil((width + 2 * overlap * (tiles - 1)) / (tiles * multiple)) * multiple
 }
 
-Function backend_def(val "backend")
+Function backend_define(val "backend", string "function_name")
 {
-    return Defined(backend) ? IsArray(backend) ? backend : \
-    [backend] : ["ncnn"]
+    backend_defined = Defined(backend) ? IsArray(backend) ? backend : [backend] : ["ncnn"]
+    if (backend_defined[0] != "ncnn" && backend_defined[0] != "ov" && backend_defined[0] != "ort")
+    {
+        return Assert(false, function_name + ": not supported backend.")
+    }
+    else
+    {
+        return backend_defined
+    }
 }
 
 Function backend_defaults(string_array backend)
