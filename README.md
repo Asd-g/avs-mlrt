@@ -73,7 +73,7 @@ Requirements:
 # Get the latest Microsoft.ML.OnnxRuntime.DirectML. (mlrt_ort)
 # Get the latest CUDA Toolkit.
 
-git clone --recurse-submodules https://github.com/Asd-g/avs-mlrt
+git clone --recurse-submodules --depth 1 https://github.com/Asd-g/avs-mlrt
 cd avs-mlrt
 
 # Building protobuf:
