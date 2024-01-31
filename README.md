@@ -10,9 +10,13 @@ Custom models can be found [in this doom9 thread](https://forum.doom9.org/showth
 
 ### Requirements:
 
-- Vulkan device (mlrt_ncnn only)
+- Vulkan device (`mlrt_ncnn`)
 
-- Intel GPU (mlrt_ov only, `device="GPU"` only)
+- Intel GPU (`mlrt_ov(... device="GPU")`)
+
+- NVIDIA GPU (`mlrt_ort(... provider="cuda")`)
+
+- DirectX 12-compatible hardware (`mlr_ort(... provider="dml")`)
 
 - AviSynth+ r3928 or later ([1](https://github.com/AviSynth/AviSynthPlus/releases) / [2](https://forum.doom9.org/showthread.php?t=181351) / [3](https://gitlab.com/uvz/AviSynthPlus-Builds))
 
@@ -36,28 +40,39 @@ The mlrt_ov plugin provides optimized pure CPU & Intel GPU runtime for some popu
 
 [How to use mlrt_ov](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ov/README.md).
 
+#### mlrt_ort
+
+[ONNX Runtime](https://onnxruntime.ai/) is an AI inference runtime with many backends.
+
+The mlrt_ort plugin provides optimized CPU, CUDA GPU and DX12 GPU runtime for some popular AI filters.
+
+[How to use mlrt_ort](https://github.com/Asd-g/avs-mlrt/blob/main/mlrt_ort/README.md).
+
 ### Building:
 
 Requirements:
-- Vulkan SDK (https://vulkan.lunarg.com/sdk/home#windows) (mlrt_ncnn only)
+- [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows) (`mlrt_ncnn`)
 - ncnn (mlrt_ncnn only)
-- OpenVINO (https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit/download.html) (mlrt_ov only)
+- [OpenVINO](https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit/download.html) (`mlrt_ov`)
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) (`mlrt_ort`)
 - protobuf
 - onnx
 - boost
 
 ```
 # Build steps:
-# Install Vulkan SDK. (mlrt_ncnn only)
-# Get the latest ncnn release. (mlrt_ncnn only)
-# Get the latest OpenVINO release. (mlrt_ov only)
+# Get the latest Vulkan SDK. (mlrt_ncnn)
+# Get the latest ncnn release. (mlrt_ncnn)
+# Get the latest OpenVINO release. (mlrt_ov)
+# Get the latest Microsoft.ML.OnnxRuntime.DirectML. (mlrt_ort)
+# Get the latest CUDA Toolkit.
 
 git clone --recurse-submodules https://github.com/Asd-g/avs-mlrt
 cd avs-mlrt
 
 # Building protobuf:
 cd protobuf
-cmake -B build_rel -G Ninja -DCMAKE_BUILD_TYPE=Release -D protobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF -DCMAKE_INSTALL_PREFIX=../install
+cmake -B build_rel -G Ninja -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF -DCMAKE_INSTALL_PREFIX=../install
 cmake --build build_rel
 cmake --install build_rel
 
@@ -74,6 +89,7 @@ cmake --install build_rel
 # Building avs-mlrt
 # BUILD_MRLT_NCNN=ON (default)
 # BUILD_MLRT_OV=ON (default)
+# BUILD_MLRT_ORT=ON (default)
 cd ..
-cmake -B build -G Ninja -DProtobuf_DIR=<current_location>\install\cmake -DONNX_DIR=<current_location>\install\lib\cmake\ONNX -Dncnn_DIR=c:\uc\avs-mlrt\install\lib\cmake\ncnn -DOpenVINO_DIR=c:\uc\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\cmake
+cmake -B build -G Ninja -DProtobuf_DIR=<current_location>\install\cmake -DONNX_DIR=<current_location>\install\lib\cmake\ONNX -Dncnn_DIR=c:\uc\avs-mlrt\install\lib\cmake\ncnn -DOpenVINO_DIR=c:\uc\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\cmake -DONNX_RUNTIME_API_DIRECTORY=<...> -DONNX_RUNTIME_LIB_DIRECTORY=<...>
 ```

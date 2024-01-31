@@ -20,6 +20,9 @@ message(STATUS "Build mlrt_ncnn: ${BUILD_MLRT_NCNN}.")
 option(BUILD_MLRT_OV "Build mrt_ov" ON)
 message(STATUS "Build mrt_ov: ${BUILD_MLRT_OV}.")
 
+option(BUILD_MLRT_ORT "Build mrt_ort" ON)
+message(STATUS "Build mrt_ort: ${BUILD_MLRT_ORT}.")
+
 set(sources ${CMAKE_CURRENT_SOURCE_DIR}/common/onnx_utils.cpp)
 
 if (BUILD_MLRT_NCNN)
@@ -32,4 +35,12 @@ if (BUILD_MLRT_OV)
         ${CMAKE_CURRENT_SOURCE_DIR}/common/convert_float_to_float16.cpp
     )
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/mlrt_ov)
+endif()
+
+if (BUILD_MLRT_ORT)
+    set(sources
+        ${sources}
+        ${CMAKE_CURRENT_SOURCE_DIR}/common/convert_float_to_float16.cpp
+    )
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/mlrt_ort)
 endif()
