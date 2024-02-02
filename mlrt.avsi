@@ -116,10 +116,13 @@ mlrt_SAFA:
 # 2: adaptive - use adaptive path at 1x, 1/2x and 1/4x scales, proposed algorithm
 
 
-### Version: 1.1.4
+### Version: 1.1.5
 
 
 ### Changelog ###
+#---------------
+# 1.1.5
+# mlrt_SAFA: allowed backend="ort".
 #---------------
 # 1.1.4
 # Added support for mlrt_ort.
@@ -454,7 +457,7 @@ Function mlrt_SAFA(clip c, val "tiles", val "tilesize", int "overlap_w", int "ov
     Assert(ComponentSize(c) == 4, "mlrt_SAFA: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_SAFA: clip must be of planar RGB color family.")
     Assert(model >= 0 && model <= 3, "mlrt_SAFA: model must be between 0..3.")
-    Assert(backend[0] == "ov", "mlrt_SAFA: backend must be ov.")
+    Assert(backend[0] == "ov" || backend[0] == "ort", "mlrt_SAFA: backend must be ov or ort.")
     Assert(adaptive >= 0 || adaptive <= 2, "mlrt_SAFA: adaptive must be between 0..2.")
 
     safa_models = Select(model,

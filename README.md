@@ -71,7 +71,7 @@ Requirements:
 # Get the latest ncnn release. (mlrt_ncnn)
 # Get the latest OpenVINO release. (mlrt_ov)
 # Get the latest Microsoft.ML.OnnxRuntime.DirectML. (mlrt_ort)
-# Get the latest CUDA Toolkit.
+# Get the latest CUDA Toolkit. (mlrt_ort)
 
 git clone --recurse-submodules --depth 1 https://github.com/Asd-g/avs-mlrt
 cd avs-mlrt
