@@ -466,7 +466,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ort(AVS_FilterInfo* fi, int n)
         for (int i{ 0 }; i < num_nodes; ++i)
             avs_release_video_frame(src_frames[i]);
 
-        d->err = "mlrt_ov: " + error_message;
+        d->err = "mlrt_ort: " + error_message;
         fi->error = d->err.c_str();
 
         return nullptr;
@@ -1091,5 +1091,5 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
 const char* AVSC_CC avisynth_c_plugin_init(AVS_ScriptEnvironment* env)
 {
     avs_add_function(env, "mlrt_ort", "c+[network_path]s[overlap_w]i[overlap_h]i[tilesize_w]i[tilesize_h]i[provider]s[device]i[num_streams]i[verbosity]i[cudnn_benchmark]b[builtin]b[builtindir]s[fp16]b[path_is_serialization]b[use_cuda_graph]b[fp16_blacklist_ops]s*", Create_mlrt_ort, 0);
-    return "mlrt_ov";
+    return "mlrt_ort";
 }
