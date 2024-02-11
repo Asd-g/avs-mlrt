@@ -1,38 +1,28 @@
 ## mlrt_ort
 
-Download the ONNX runtimes (`onnxruntime_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
+### Runtime files
 
-For `mlrt_ort(... provider="dml")` download the DirectML runtimes (`directml_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
-
-For `mlrt_ort(... provider="cuda")` download the CUDA runtimes (`cuda_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases). ([credits](https://github.com/AmusementClub/vs-mlrt/releases))<br>
-Different version of CUDA runtimes can be downloaded from [here](https://github.com/AmusementClub/vs-mlrt/releases) (take note to `Version information:` section). Download `vsmlrt-windows-x64-cuda...` and take the files from `vsort` and `vsmlrt-cuda`.
-
-How to load the above runtimes:
-- (Optional) Add the extracted files to PATH.
-- Download [LoadDLL.dll](https://forum.doom9.org/showthread.php?t=173259).
-- Create the following script (for example `mlrt_ort_loader.avsi`) (it could be placed in the plugins folder for autoloading or be mannually imported):
+1. Download [LoadDLL.dll](https://forum.doom9.org/showthread.php?t=173259).
+2. Download the ONNX runtime files (`onnxruntime_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
+3. Extract them in `ort_runtime_files` folder (the folder can be located next to `mlrt_ort.dll` or in other place).
+4. (optional if `provider="cuda"` will be used) Download the CUDA runtime files (`cuda_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases) and extract them in the `ort_runtime_files` folder.
+5. (optional if `provide="dml"` will NOT be used) Delete `DirectML.dll` from the `ort_runtime_files` folder.
+6. Create a `mlrt_ort_loader.avsi` script next to `mlrt_ort.dll` that contains (the order of dll loading is important):
 
 ```
-# Uncomment if DirectML will be used.
-#LoadDLL("path_to\DirectML.dll")
+# Uncomment the following lines if provider="cuda" will be used.
+#LoadDLL("path_to_ort_runtime_files\cublasLt64_12.dll")
+#LoadDLL("path_to_ort_runtime_files\cudart64_12.dll")
+#LoadDLL("path_to_ort_runtime_files\cudnn64_8.dll")
+#LoadDLL("path_to_ort_runtime_files\cufft64_11.dll")
+#LoadDLL("path_to_ort_runtime_files\cudnn_ops_infer64_8.dll")
+#LoadDLL("path_to_ort_runtime_files\cudnn_cnn_infer64_8.dll")
+#LoadDLL("path_to_ort_runtime_files\cudnn_adv_infer64_8.dll")
 
+# Uncomment the following line if provider="dml" will be used.
+#LoadDLL("path_to_ort_runtime_files\DirectML.dll")
 
-# Uncomment if CUDA will be used.
-#LoadDLL("cudart64_12.dll")
-#LoadDLL("cublasLt64_12.dll")
-#LoadDLL("cublas64_12.dll")
-#LoadDLL("cufft64_11.dll")
-#LoadDLL("zlibwapi.dll") # cuDNN version 8.3.0+ depends on zlib as a shared library dependency
-#LoadDLL("cudnn_ops_infer64_8.dll")
-#LoadDLL("cudnn_cnn_infer64_8.dll")
-#LoadDLL("cudnn_adv_infer64_8.dll")
-#LoadDLL("cudnn64_8.dll")
-#LoadDLL("cupti64_2023.3.1.dll")
-#LoadDLL("path_to\onnxruntime_providers_shared.dll")
-#LoadDLL("path_to\onnxruntime_providers_cuda.dll")
-
-
-LoadDLL("path_to\onnxruntime.dll")
+LoadDLL("path_to_ort_runtime_files\onnxruntime.dll")
 LoadPlugin("mlrt_ort.dll")
 ```
 
