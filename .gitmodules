@@ -4,3 +4,6 @@
 [submodule "onnx"]
 	path = onnx
 	url = https://github.com/onnx/onnx
+[submodule "onnxruntime"]
+	path = mlrt/onnxruntime
+	url = https://github.com/microsoft/onnxruntime
