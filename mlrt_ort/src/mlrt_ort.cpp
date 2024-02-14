@@ -431,11 +431,11 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ort(AVS_FilterInfo* fi, int n)
     const int* planes{ (avs_is_rgb(in_vis[0])) ? planes_r : &plane_y };
 
     std::unique_ptr<const uint8_t* []> src_ptrs{ std::make_unique_for_overwrite<const uint8_t * []>(src_tile_shape[1]) };
+    int num_planes_total{};
     for (int i{ 0 }; i < num_nodes; ++i)
     {
-        const int num_planes{ avs_num_components(in_vis[std::max(i - 1, 0)]) };
-        for (int j{ 0 }; j < avs_num_components(in_vis[i]); ++j)
-            src_ptrs[i * num_planes + j] = avs_get_read_ptr_p(src_frames[i], planes[j]);
+        for (int j{ 0 }; j < avs_num_components(in_vis[i]); ++j, ++num_planes_total)
+            src_ptrs[num_planes_total] = avs_get_read_ptr_p(src_frames[i], planes[j]);
     }
 
     auto step_w{ src_tile_w - 2 * d->overlap_w };
