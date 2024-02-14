@@ -12,14 +12,16 @@
 using namespace std::string_literals;
 
 #ifdef _WIN32
-#include <locale>
-#include <codecvt>
-static inline std::wstring translateName(const char* name) noexcept {
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    return converter.from_bytes(name);
+#include <Windows.h>
+static inline std::wstring translateName(const std::string& name, const unsigned CP) noexcept
+{
+    const int num_chars{ MultiByteToWideChar(CP, 0, &name[0], static_cast<int>(name.size()), nullptr, 0) };
+    std::wstring wide_source(num_chars, 0);
+    MultiByteToWideChar(CP, 0, &name[0], static_cast<int>(name.size()), &wide_source[0], num_chars);
+    return wide_source;
 }
 #else
-#define translateName(n) (n)
+#define translateName(n, m) (n)
 #endif
 
 
@@ -98,7 +100,8 @@ static std::optional<std::string> specifyShape(
 
 
 std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
-    const std::string_view& path,
+    const std::string& path,
+    const unsigned CP,
     int64_t tile_w,
     int64_t tile_h,
     bool path_is_serialization
@@ -109,32 +112,23 @@ std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
     if (path_is_serialization)
     {
         if (!onnx_proto.ParseFromArray(path.data(), static_cast<int>(path.size())))
-        {
             return "parse onnx serialization failed"s;
-        }
     }
     else
     {
         std::ifstream onnx_stream(
-            translateName(path.data()),
+            translateName(path, CP),
             std::ios::binary
         );
 
         if (!onnx_stream.good())
-        {
-            return "open "s + std::string{ path } + " failed"s;
-        }
-
+            return "open "s + path + " failed to open"s;
         if (!onnx_proto.ParseFromIstream(&onnx_stream))
-        {
-            return "parse "s + std::string{ path } + " failed"s;
-        }
+            return "parse "s + path + " failed to parse"s;
     }
 
     if (auto err{ specifyShape(onnx_proto, tile_w, tile_h) }; err.has_value())
-    {
         return err.value();
-    }
 
     return onnx_proto;
 }

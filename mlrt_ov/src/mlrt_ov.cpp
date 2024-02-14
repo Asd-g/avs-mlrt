@@ -18,7 +18,8 @@
 
 
 extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
-    const std::string_view& path,
+    const std::string& path,
+    const unsigned CP,
     int64_t tile_w,
     int64_t tile_h,
     bool path_is_serialization
@@ -254,19 +255,19 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ov(AVS_FilterInfo* fi, int n)
     auto w_scale{ dst_tile_w / src_tile_w };
 
     const auto set_error{ [&](const std::string& error_message)
-        {
-            using namespace std::string_literals;
+    {
+        using namespace std::string_literals;
 
-            avs_release_video_frame(dst_frame);
+        avs_release_video_frame(dst_frame);
 
-            for (const auto& frame : src_frames)
-                avs_release_video_frame(frame);
+        for (const auto& frame : src_frames)
+            avs_release_video_frame(frame);
 
-            d->err = "mlrt_ov: "s + error_message;
-            fi->error = d->err.c_str();
+        d->err = "mlrt_ov: "s + error_message;
+        fi->error = d->err.c_str();
 
-            return nullptr;
-        }
+        return nullptr;
+    }
     };
 
     int y = 0;
@@ -412,18 +413,18 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         d->nodes.emplace_back(avs_take_clip(*(avs_as_array(avs_array_elt(args, Clips)) + (i + 1)), env));
 
     auto set_error{ [&](const std::string& error_message)
-        {
-            using namespace std::string_literals;
+    {
+        using namespace std::string_literals;
 
-            avs_release_clip(clip);
+        avs_release_clip(clip);
 
-            for (const auto& node : d->nodes)
-                avs_release_clip(node);
+        for (const auto& node : d->nodes)
+            avs_release_clip(node);
 
-            d->err = "mlrt_ov: "s + error_message;
+        d->err = "mlrt_ov: "s + error_message;
 
-            return avs_new_value_error(d->err.c_str());
-        }
+        return avs_new_value_error(d->err.c_str());
+    }
     };
 
     if (avs_check_version(env, 10))
@@ -493,38 +494,23 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     const bool fp16{ avs_defined(avs_array_elt(args, Fp16)) ? static_cast<const bool>(!!avs_as_bool(avs_array_elt(args, Fp16))) : false };
 
     const bool path_is_serialization{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Path_is_serialization)) ? (avs_as_bool(avs_array_elt(args, Path_is_serialization))) : false) };
-    const char* network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
-    if (!network_path)
+    std::string network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
+    if (!network_path.size())
         return set_error("network_path must be specified");
 
-    std::string_view path_view;
-    std::string path;
-    if (path_is_serialization)
+    const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
+    if (builtin)
     {
-        path_view = {
-            network_path,
-            static_cast<size_t>(strlen(avs_as_string(avs_array_elt(args, Network_path))))
-        };
-    }
-    else
-    {
-        path = network_path;
-        const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
-        if (builtin)
-        {
-            const char* modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : 0 };
-            if (!modeldir)
-                modeldir = "models";
-            path = std::string(modeldir) + "/" + path;
-            path = boost::dll::this_line_location().parent_path().generic_string() + "/" + path;
-        }
-        path_view = path;
+        std::string modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : "models" };
+        network_path = boost::dll::this_line_location().parent_path().generic_string() + "/" + modeldir + "/" + network_path;
     }
 
-
-    auto result = loadONNX(path_view, tile_w, tile_h, path_is_serialization);
-    if (std::holds_alternative<std::string>(result)) {
-        return set_error(std::get<std::string>(result));
+    auto result{ loadONNX(network_path, 0, tile_w, tile_h, path_is_serialization) };
+    if (std::holds_alternative<std::string>(result))
+    {
+        result = loadONNX(network_path, 65001, tile_w, tile_h, path_is_serialization);
+        if (std::holds_alternative<std::string>(result))
+            return set_error(std::get<std::string>(result));
     }
 
     auto onnx_model{ std::move(std::get<ONNX_NAMESPACE::ModelProto>(result)) };
@@ -535,12 +521,12 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         const int num{ (avs_defined(avs_array_elt(args, Fp16_blacklist_ops))) ? avs_array_size(avs_array_elt(args, Fp16_blacklist_ops)) : 0 };
         if (num == 0)
             fp16_blacklist_ops = {
-                "ArrayFeatureExtractor", "Binarizer", "CastMap", "CategoryMapper",
-                "DictVectorizer", "FeatureVectorizer", "Imputer", "LabelEncoder",
-                "LinearClassifier", "LinearRegressor", "Normalizer", "OneHotEncoder",
-                "SVMClassifier", "SVMRegressor", "Scaler", "TreeEnsembleClassifier",
-                "TreeEnsembleRegressor", "ZipMap", "NonMaxSuppression", "TopK",
-                "RoiAlign", "Range", "CumSum", "Min", "Max"
+            "ArrayFeatureExtractor", "Binarizer", "CastMap", "CategoryMapper",
+            "DictVectorizer", "FeatureVectorizer", "Imputer", "LabelEncoder",
+            "LinearClassifier", "LinearRegressor", "Normalizer", "OneHotEncoder",
+            "SVMClassifier", "SVMRegressor", "Scaler", "TreeEnsembleClassifier",
+            "TreeEnsembleRegressor", "ZipMap", "NonMaxSuppression", "TopK",
+            "RoiAlign", "Range", "CumSum", "Min", "Max"
         };
         else
         {
@@ -632,7 +618,8 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         {
             d->executable_network = core.LoadNetwork(network, device, config);
         }
-        catch (const InferenceEngine::Exception& e) {
+        catch (const InferenceEngine::Exception& e)
+        {
             return set_error(e.what());
         }
 

@@ -34,7 +34,8 @@ using namespace std::chrono_literals;
 
 
 extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
-    const std::string_view& path,
+    const std::string& path,
+    const unsigned CP,
     int64_t tile_w,
     int64_t tile_h,
     bool path_is_serialization
@@ -818,23 +819,22 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
     const int use_cuda_graph{ avs_defined(avs_array_elt(args, Use_cuda_graph)) ? (avs_as_bool(avs_array_elt(args, Use_cuda_graph))) : 0 };
     std::string network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
     if (!network_path.size())
-        return set_error("network_path must be specified.");
-    if (!path_is_serialization)
-    {
-        const int builtin{ avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : 1 };
-        if (builtin)
-        {
-            std::string modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : "" };
-            if (!modeldir.size())
-                modeldir = "models";
-            network_path = modeldir + "/" + network_path;
-            network_path = boost::dll::this_line_location().parent_path().generic_string() + "/" + network_path;
-        }
-    };
+        return set_error("network_path must be specified");
 
-    auto result = loadONNX(network_path, tile_w, tile_h, path_is_serialization);
+    const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
+    if (builtin)
+    {
+        std::string modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : "models" };
+        network_path = boost::dll::this_line_location().parent_path().generic_string() + "/" + modeldir + "/" + network_path;
+    }
+
+    auto result{ loadONNX(network_path, 0, tile_w, tile_h, path_is_serialization) };
     if (std::holds_alternative<std::string>(result))
-        return set_error(std::get<std::string>(result));
+    {
+        result = loadONNX(network_path, 65001, tile_w, tile_h, path_is_serialization);
+        if (std::holds_alternative<std::string>(result))
+            return set_error(std::get<std::string>(result));
+    }
 
     auto onnx_model{ std::move(std::get<ONNX_NAMESPACE::ModelProto>(result)) };
 

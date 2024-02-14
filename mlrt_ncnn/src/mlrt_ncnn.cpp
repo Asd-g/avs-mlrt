@@ -26,7 +26,8 @@
 
 
 extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
-    const std::string_view& path,
+    const std::string& path,
+    const unsigned CP,
     int64_t tile_w,
     int64_t tile_h,
     bool path_is_serialization
@@ -36,7 +37,8 @@ extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
 [[nodiscard]]
 static std::optional<std::string> checkNodes(
     const std::vector<const AVS_VideoInfo*>& vis
-) noexcept {
+) noexcept
+{
 
     for (const auto& vi : vis)
     {
@@ -53,11 +55,13 @@ static std::optional<std::string> checkNodes(
     return {};
 }
 
-struct TicketSemaphore {
+struct TicketSemaphore
+{
     std::atomic<intptr_t> ticket{};
     std::atomic<intptr_t> current{};
 
-    void acquire() noexcept {
+    void acquire() noexcept
+    {
         intptr_t tk{ ticket.fetch_add(1, std::memory_order_acquire) };
         while (true)
         {
@@ -75,7 +79,8 @@ struct TicketSemaphore {
         }
     }
 
-    void release() noexcept {
+    void release() noexcept
+    {
         current.fetch_add(1, std::memory_order_release);
 #if __cpp_lib_atomic_wait
         current.notify_all();
@@ -84,7 +89,8 @@ struct TicketSemaphore {
 };
 
 // per-stream context
-struct Resource {
+struct Resource
+{
     std::unique_ptr<ncnn::VkCompute> cmd;
     ncnn::VkAllocator* blob_vkallocator;
     ncnn::VkAllocator* staging_vkallocator;
@@ -98,7 +104,8 @@ struct Resource {
 
 static std::atomic<int> num_plugin_instances{};
 
-struct avsNcnnData {
+struct avsNcnnData
+{
     std::vector<AVS_Clip*> nodes;
 
     int overlap_w, overlap_h;
@@ -118,7 +125,8 @@ struct avsNcnnData {
     int input_index;
     int output_index;
 
-    int acquire() noexcept {
+    int acquire() noexcept
+    {
         semaphore.acquire();
         {
             std::lock_guard<std::mutex> lock(ticket_lock);
@@ -128,7 +136,8 @@ struct avsNcnnData {
         }
     }
 
-    void release(int ticket) noexcept {
+    void release(int ticket) noexcept
+    {
         {
             std::lock_guard<std::mutex> lock(ticket_lock);
             tickets.push_back(ticket);
@@ -205,7 +214,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ncnn(AVS_FilterInfo* fi, int n)
     auto w_scale{ dst_tile_w / src_tile_w };
 
     const auto set_error{ [&](const std::string& error_message)
-{
+    {
         using namespace std::string_literals;
 
         d->release(ticket);
@@ -213,7 +222,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ncnn(AVS_FilterInfo* fi, int n)
         avs_release_video_frame(dst_frame);
 
         for (const auto& frame : src_frames)
-{
+        {
             avs_release_video_frame(frame);
         }
 
@@ -393,7 +402,7 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
         d->nodes.emplace_back(avs_take_clip(*(avs_as_array(avs_array_elt(args, Clips)) + (i + 1)), env));
 
     auto set_error{ [&](const std::string& error_message)
-{
+    {
         using namespace std::string_literals;
 
         avs_release_clip(clip);
@@ -485,42 +494,29 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
     d->fp16 = !!avs_defined(avs_array_elt(args, Fp16)) ? (avs_as_bool(avs_array_elt(args, Fp16))) : false;
 
     const bool path_is_serialization{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Path_is_serialization)) ? (avs_as_bool(avs_array_elt(args, Path_is_serialization))) : false) };
-    const char* network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
-    if (!network_path)
+    std::string network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
+    if (!network_path.size())
         return set_error("network_path must be specified");
 
-    std::string_view path_view;
-    std::string path;
-    if (path_is_serialization)
+    const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
+    if (builtin)
     {
-        path_view = {
-            network_path,
-            static_cast<size_t>(strlen(avs_as_string(avs_array_elt(args, Network_path))))
-        };
-    }
-    else
-    {
-        path = network_path;
-        const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
-        if (builtin)
-        {
-            const char* modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : 0 };
-            if (!modeldir)
-                modeldir = "models";
-            path = std::string(modeldir) + "/" + path;
-            path = boost::dll::this_line_location().parent_path().generic_string() + "/" + path;
-        }
-        path_view = path;
+        std::string modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : "models" };
+        network_path = boost::dll::this_line_location().parent_path().generic_string() + "/" + modeldir + "/" + network_path;
     }
 
-    auto result{ loadONNX(path_view, tile_w, tile_h, path_is_serialization) };
+    auto result{ loadONNX(network_path, 0, tile_w, tile_h, path_is_serialization) };
     if (std::holds_alternative<std::string>(result))
-        return set_error(std::get<std::string>(result));
+    {
+        result = loadONNX(network_path, 65001, tile_w, tile_h, path_is_serialization);
+        if (std::holds_alternative<std::string>(result))
+            return set_error(std::get<std::string>(result));
+    }
 
     auto onnx_model{ std::move(std::get<ONNX_NAMESPACE::ModelProto>(result)) };
     {
         auto int64ToIntS{ [&](int64_t i)
-{
+        {
             if (i > INT_MAX)
                 return INT_MAX;
             else if (i < INT_MIN)
@@ -560,7 +556,7 @@ static AVS_Value AVSC_CC Create_mlrt_ncnn(AVS_ScriptEnvironment* env, AVS_Value 
         free(ptr);
 #endif
     }
-};
+    };
 
     // ncnn related code
     if (auto device{ ncnn::get_gpu_device(device_id) }; device != nullptr)
