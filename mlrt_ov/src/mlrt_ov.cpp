@@ -195,17 +195,21 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ov(AVS_FilterInfo* fi, int n)
 {
     OVData* d{ static_cast<OVData*>(fi->user_data) };
 
-    std::vector<const AVS_VideoInfo*> in_vis;
-    in_vis.reserve(std::size(d->nodes) + 1);
-    in_vis.emplace_back(avs_get_video_info(fi->child));
-    for (const auto& node : d->nodes)
-        in_vis.emplace_back(avs_get_video_info(node));
+    std::vector<const AVS_VideoInfo*> in_vis(std::size(d->nodes) + 1);
+    in_vis[0] = avs_get_video_info(fi->child);
+    for (int i{ 1 }; const auto & node : d->nodes)
+    {
+        in_vis[i] = avs_get_video_info(node);
+        ++i;
+    }
 
-    std::vector<AVS_VideoFrame*> src_frames;
-    src_frames.reserve(std::size(in_vis));
-    src_frames.emplace_back(avs_get_frame(fi->child, n));
-    for (const auto& node : d->nodes)
-        src_frames.emplace_back(avs_get_frame(node, n));
+    std::vector<AVS_VideoFrame*> src_frames(std::size(in_vis));
+    src_frames[0] = avs_get_frame(fi->child, n);
+    for (int i{ 1 }; const auto & node : d->nodes)
+    {
+        src_frames[i] = avs_get_frame(node, n);
+        ++i;
+    }
     for (int i{ 0 }; i < std::size(src_frames); ++i)
     {
         if (!src_frames[i])
@@ -226,12 +230,12 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ov(AVS_FilterInfo* fi, int n)
     constexpr int plane_y{ AVS_PLANAR_Y };
     const int* planes{ (avs_is_rgb(in_vis.front())) ? planes_r : &plane_y };
 
-    std::vector<const uint8_t*> src_ptrs;
-    src_ptrs.reserve(src_tile_shape[1]);
+    std::vector<const uint8_t*> src_ptrs(src_tile_shape[1]);
+    int num_planes_total{};
     for (unsigned i{ 0 }; i < std::size(src_frames); ++i)
     {
-        for (int j{ 0 }; j < avs_num_components(in_vis[i]); ++j)
-            src_ptrs.emplace_back(avs_get_read_ptr_p(src_frames[i], planes[j]));
+        for (int j{ 0 }; j < avs_num_components(in_vis[i]); ++j, ++num_planes_total)
+            src_ptrs[num_planes_total] = avs_get_read_ptr_p(src_frames[i], planes[j]);
     }
 
     auto step_w{ src_tile_w - 2 * d->overlap_w };
@@ -283,7 +287,7 @@ static AVS_VideoFrame* AVSC_CC get_frame_mlrt_ov(AVS_FilterInfo* fi, int n)
             const int x_crop_end{ (x == src_width - src_tile_w) ? 0 : d->overlap_w };
 
             {
-                InferenceEngine::Blob::Ptr input = d->infer_requests.GetBlob(d->input_name);
+                InferenceEngine::Blob::Ptr input{ d->infer_requests.GetBlob(d->input_name) };
 
                 auto minput{ input->as<InferenceEngine::MemoryBlob>() };
                 auto minputHolder{ minput->wmap() };
@@ -430,11 +434,13 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     if (avs_check_version(env, 10))
         return set_error("AviSynth+ version must be r3928 or later.");
 
-    std::vector<const AVS_VideoInfo*> in_vis;
-    in_vis.reserve(num_nodes);
-    in_vis.emplace_back(&fi->vi);
-    for (const auto& node : d->nodes)
-        in_vis.emplace_back(avs_get_video_info(node));
+    std::vector<const AVS_VideoInfo*> in_vis(num_nodes);
+    in_vis[0] = &fi->vi;
+    for (int i{ 1 }; const auto & node : d->nodes)
+    {
+        in_vis[i] = avs_get_video_info(node);
+        ++i;
+    }
 
     if (auto err{ checkNodes(in_vis) }; err.has_value())
         return set_error(err.value());
@@ -564,7 +570,7 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
 
         try
         {
-            ov::pass::ConstantFolding().run_on_function(function);
+            ov::pass::ConstantFolding().run_on_model(function);
         }
         catch (const ov::Exception& e)
         {
@@ -575,7 +581,7 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         {
             try
             {
-                ov::pass::VisualizeTree(avs_as_string(avs_array_elt(args, Dot_path)), nullptr, true).run_on_function(function);
+                ov::pass::VisualizeTree(avs_as_string(avs_array_elt(args, Dot_path)), nullptr, true).run_on_model(function);
             }
             catch (const ov::Exception& e)
             {
