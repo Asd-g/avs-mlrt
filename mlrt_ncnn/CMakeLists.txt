@@ -30,7 +30,7 @@ target_link_libraries(mlrt_ncnn PRIVATE
     avisynth
 )
 
-target_compile_features(mlrt_ncnn PRIVATE cxx_std_17)
+target_compile_features(mlrt_ncnn PRIVATE cxx_std_20)
 
 if (MSVC)
     target_compile_options(mlrt_ncnn PRIVATE /EHsc)

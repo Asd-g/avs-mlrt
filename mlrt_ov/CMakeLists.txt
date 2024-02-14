@@ -28,7 +28,7 @@ target_link_libraries(mlrt_ov PRIVATE
     avisynth
 )
 
-target_compile_features(mlrt_ov PRIVATE cxx_std_17)
+target_compile_features(mlrt_ov PRIVATE cxx_std_20)
 
 if (MSVC)
     target_compile_options(mlrt_ov PRIVATE /EHsc)
