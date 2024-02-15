@@ -32,6 +32,11 @@ using namespace std::chrono_literals;
 #include "avisynth_c.h"
 #include "boost/dll/runtime_symbol_info.hpp"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif // _WIN32
+
+
 
 extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
     const std::string& path,
@@ -383,6 +388,11 @@ struct ORTData
     int num_nodes;
     int num_streams;
     int device_id;
+
+#ifdef _WIN32
+    HMODULE dml_dll;
+#endif // _WIN32
+
 };
 
 template <Backend backend>
@@ -659,6 +669,11 @@ static void AVSC_CC free_mlrt_ort(AVS_FilterInfo* fi)
 
     ortapi->ReleaseEnv(d->environment);
 
+#ifdef _WIN32
+    if constexpr (backend == Backend::DML)
+        FreeLibrary(d->dml_dll);
+#endif // _WIN32
+
     delete d;
 }
 
@@ -804,6 +819,40 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
     if (backend == Backend::UNKNOWN)
         return set_error("unknwon provider.");
 
+#ifdef _WIN32
+    if (backend == Backend::DML)
+    {
+        HMODULE dll_name{ GetModuleHandleW(L"onnxruntime.dll") };
+        if (!dll_name)
+            return set_error("no onnxruntime.dll found.");
+        else
+        {
+            DWORD pathLen = MAX_PATH;
+            std::wstring dll_path(pathLen, 0);
+            DWORD result{ GetModuleFileNameW(dll_name, const_cast<wchar_t*>(dll_path.c_str()), pathLen) };
+            while (result == 0 || result == pathLen)
+            {
+                const DWORD ret{ GetLastError() };
+                if (ret == ERROR_INSUFFICIENT_BUFFER && pathLen < 32768)
+                {
+                    pathLen <<= 1;
+                    dll_path.resize(pathLen);
+                    result = GetModuleFileNameW(dll_name, const_cast<wchar_t*>(dll_path.c_str()), pathLen);
+                }
+                else
+                    return set_error("cannot obtain onnxruntime.dll path.");
+            }
+
+            dll_path.resize(dll_path.rfind('\\') + 1);
+            dll_path.append(L"DirectML.dll");
+
+            d->dml_dll = LoadLibraryW(dll_path.c_str());
+            if (!d->dml_dll)
+                return set_error("failed loading DirectML.dll.");
+        }
+    }
+#endif // _WIN32
+
     const int num_streams{ avs_defined(avs_array_elt(args, Num_streams)) ? (avs_as_int(avs_array_elt(args, Num_streams))) : 1 };
     if (num_streams <= 0)
         return set_error("num_streams must be positive.");
@@ -819,7 +868,7 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
     const int use_cuda_graph{ avs_defined(avs_array_elt(args, Use_cuda_graph)) ? (avs_as_bool(avs_array_elt(args, Use_cuda_graph))) : 0 };
     std::string network_path{ avs_as_string(avs_array_elt(args, Network_path)) };
     if (!network_path.size())
-        return set_error("network_path must be specified");
+        return set_error("network_path must be specified.");
 
     const bool builtin{ static_cast<bool>(!!avs_defined(avs_array_elt(args, Builtin)) ? (avs_as_bool(avs_array_elt(args, Builtin))) : true) };
     if (builtin)
