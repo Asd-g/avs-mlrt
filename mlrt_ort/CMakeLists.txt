@@ -35,6 +35,11 @@ target_link_libraries(mlrt_ort PRIVATE
     avisynth
 )
 
+if (MSVC)
+    target_link_libraries(mlrt_ort PRIVATE delayimp)
+    target_link_options(mlrt_ort PRIVATE "/DELAYLOAD:onnxruntime.dll")
+endif()
+
 target_compile_features(mlrt_ort PRIVATE cxx_std_20)
 
 if (MSVC)

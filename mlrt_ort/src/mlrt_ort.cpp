@@ -37,7 +37,6 @@ using namespace std::chrono_literals;
 #endif // _WIN32
 
 
-
 extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
     const std::string& path,
     const unsigned CP,
@@ -390,7 +389,9 @@ struct ORTData
     int device_id;
 
 #ifdef _WIN32
+    HMODULE onnxrt_dll;
     HMODULE dml_dll;
+    std::array<HMODULE, 8> cuda_dll;
 #endif // _WIN32
 
 };
@@ -670,8 +671,21 @@ static void AVSC_CC free_mlrt_ort(AVS_FilterInfo* fi)
     ortapi->ReleaseEnv(d->environment);
 
 #ifdef _WIN32
+    if constexpr (backend == Backend::CUDA)
+    {
+        for (const auto& cuda : d->cuda_dll)
+        {
+            if (cuda)
+                FreeLibrary(cuda);
+        }
+    }
     if constexpr (backend == Backend::DML)
-        FreeLibrary(d->dml_dll);
+    {
+        if (d->dml_dll)
+            FreeLibrary(d->dml_dll);
+    }
+
+    FreeLibrary(d->onnxrt_dll);
 #endif // _WIN32
 
     delete d;
@@ -706,6 +720,34 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
             d->nodes[i - 1] = avs_take_clip(*(avs_as_array(avs_array_elt(args, Clips)) + i), env);
     }
 
+    const int device_id{ avs_defined(avs_array_elt(args, Device)) ? (avs_as_int(avs_array_elt(args, Device))) : 0 };
+    d->device_id = device_id;
+
+    Backend backend{ [&]()
+    {
+        std::string provider{ avs_defined(avs_array_elt(args, Provider)) ? (avs_as_string(avs_array_elt(args, Provider))) : "" };
+        std::transform(provider.begin(), provider.end(), provider.begin(), [](unsigned char c) { return std::tolower(c); });
+
+        if (!provider.size() || !provider.compare("cpu"))
+        {
+            return Backend::CPU;
+        }
+        else if (!provider.compare("cuda"))
+        {
+            do
+            {
+                if (cudaError_t result = cudaSetDevice(device_id); result != cudaSuccess)
+                    return Backend::UNKNOWN;
+            }
+            while (0);
+            return Backend::CUDA;
+        }
+        else if (!provider.compare("dml"))
+            return Backend::DML;
+        else
+            return Backend::UNKNOWN;
+    }() };
+
     auto set_error{ [&](const std::string& error_message)
     {
         avs_release_clip(clip);
@@ -715,9 +757,26 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
 
         d->err = "mlrt_ort: " + error_message;
 
+#ifdef _WIN32
+        if (backend == Backend::CUDA)
+        {
+            for (const auto& cuda : d->cuda_dll)
+            {
+                if (cuda)
+                    FreeLibrary(cuda);
+            }
+        }
+        if (backend == Backend::DML && d->dml_dll)
+            FreeLibrary(d->dml_dll);
+        if (d->onnxrt_dll)
+            FreeLibrary(d->onnxrt_dll);
+#endif // _WIN32
+
         return avs_new_value_error(d->err.c_str());
     } };
 
+    if (backend == Backend::UNKNOWN)
+        return set_error("unknwon provider.");
     if (avs_check_version(env, 10))
         return set_error("AviSynth+ version must be r3928 or later.");
     if (avs_component_size(&fi->vi) != 4)
@@ -736,8 +795,6 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
             return set_error("number of frames mismatch.");
     }
 
-    const int device_id{ avs_defined(avs_array_elt(args, Device)) ? (avs_as_int(avs_array_elt(args, Device))) : 0 };
-    d->device_id = device_id;
     const int verbosity{ avs_defined(avs_array_elt(args, Verbosity)) ? (avs_as_int(avs_array_elt(args, Verbosity))) : 3 };
     if (verbosity < 0 || verbosity > 4)
         return set_error("verbosity must be between 0..4.");
@@ -792,63 +849,38 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
     if (tile_h - 2 * d->overlap_h <= 0)
         return set_error("overlap_h too large.");
 
-    Backend backend{ [&]()
-    {
-        std::string provider{ avs_defined(avs_array_elt(args, Provider)) ? (avs_as_string(avs_array_elt(args, Provider))) : "" };
-        std::transform(provider.begin(), provider.end(), provider.begin(), [](unsigned char c) { return std::tolower(c); });
-
-        if (!provider.size() || !provider.compare("cpu"))
-        {
-            return Backend::CPU;
-        }
-        else if (!provider.compare("cuda"))
-        {
-            do
-            {
-                if (cudaError_t result = cudaSetDevice(device_id); result != cudaSuccess)
-                    return Backend::UNKNOWN;
-            }
-            while (0);
-            return Backend::CUDA;
-        }
-        else if (!provider.compare("dml"))
-            return Backend::DML;
-        else
-            return Backend::UNKNOWN;
-    }() };
-    if (backend == Backend::UNKNOWN)
-        return set_error("unknwon provider.");
+    std::string mlrt_ort_path{ boost::dll::this_line_location().parent_path().generic_string() };
 
 #ifdef _WIN32
+    d->onnxrt_dll = LoadLibraryA((mlrt_ort_path + "/mlrt_ort_rt/onnxruntime.dll").c_str());
+    if (!d->onnxrt_dll)
+        return set_error("failed loading " + mlrt_ort_path + "/mlrt_ort_rt/onnxruntime.dll.");
+
     if (backend == Backend::DML)
     {
-        HMODULE dll_name{ GetModuleHandleW(L"onnxruntime.dll") };
-        if (!dll_name)
-            return set_error("no onnxruntime.dll found.");
-        else
+        d->dml_dll = LoadLibraryA((mlrt_ort_path + "/mlrt_ort_rt/DirectML.dll").c_str());
+        if (!d->dml_dll)
+            return set_error("failed loading " + mlrt_ort_path + "/mlrt_ort_rt/DirectML.dll.");
+    }
+    else if (backend == Backend::CUDA)
+    {
+        constexpr std::array<std::string_view, 8> cuda_dll_names
         {
-            DWORD pathLen = MAX_PATH;
-            std::wstring dll_path(pathLen, 0);
-            DWORD result{ GetModuleFileNameW(dll_name, const_cast<wchar_t*>(dll_path.c_str()), pathLen) };
-            while (result == 0 || result == pathLen)
-            {
-                const DWORD ret{ GetLastError() };
-                if (ret == ERROR_INSUFFICIENT_BUFFER && pathLen < 32768)
-                {
-                    pathLen <<= 1;
-                    dll_path.resize(pathLen);
-                    result = GetModuleFileNameW(dll_name, const_cast<wchar_t*>(dll_path.c_str()), pathLen);
-                }
-                else
-                    return set_error("cannot obtain onnxruntime.dll path.");
-            }
+            "cublasLt64_12.dll",
+            "cublas64_12.dll",
+            "cudart64_12.dll",
+            "cudnn64_8.dll",
+            "cufft64_11.dll",
+            "cudnn_ops_infer64_8.dll",
+            "cudnn_cnn_infer64_8.dll",
+            "cudnn_adv_infer64_8.dll"
+        };
 
-            dll_path.resize(dll_path.rfind('\\') + 1);
-            dll_path.append(L"DirectML.dll");
-
-            d->dml_dll = LoadLibraryW(dll_path.c_str());
-            if (!d->dml_dll)
-                return set_error("failed loading DirectML.dll.");
+        for (int i{ 0 }; i < cuda_dll_names.size(); ++i)
+        {
+            d->cuda_dll[i] = LoadLibraryA((mlrt_ort_path + "/mlrt_ort_rt/" + std::string{ cuda_dll_names[i] }).c_str());
+            if (!d->cuda_dll[i])
+                return set_error("failed loading " + mlrt_ort_path + "/mlrt_ort_rt/" + std::string{ cuda_dll_names[i] });
         }
     }
 #endif // _WIN32
@@ -874,7 +906,7 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
     if (builtin)
     {
         std::string modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : "models" };
-        network_path = boost::dll::this_line_location().parent_path().generic_string() + "/" + modeldir + "/" + network_path;
+        network_path = mlrt_ort_path + "/" + modeldir + "/" + network_path;
     }
 
     auto result{ loadONNX(network_path, 0, tile_w, tile_h, path_is_serialization) };
