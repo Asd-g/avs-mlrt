@@ -2,29 +2,13 @@
 
 ### Runtime files
 
-1. Download [LoadDLL.dll](https://forum.doom9.org/showthread.php?t=173259).
-2. Download the ONNX runtime files (`onnxruntime_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
-3. Extract them in `ort_runtime_files` folder (the folder can be located next to `mlrt_ort.dll` or in other place).
-4. (optional if `provider="cuda"` will be used) Download the CUDA runtime files (`cuda_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases) and extract them in the `ort_runtime_files` folder.
-5. (optional if `provide="dml"` will NOT be used) Delete `DirectML.dll` from the `ort_runtime_files` folder.
-6. Create a `mlrt_ort_loader.avsi` script next to `mlrt_ort.dll` that contains (the order of dll loading is important):
+All runtime files must be in `mlrt_ort_rt` folder that is located in the same folder as `mlrt.ort.dll`.<br>
+They can be downloaded from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
 
-```
-# Uncomment the following lines if provider="cuda" will be used.
-#LoadDLL("path_to_ort_runtime_files\cublasLt64_12.dll")
-#LoadDLL("path_to_ort_runtime_files\cudart64_12.dll")
-#LoadDLL("path_to_ort_runtime_files\cudnn64_8.dll")
-#LoadDLL("path_to_ort_runtime_files\cufft64_11.dll")
-#LoadDLL("path_to_ort_runtime_files\cudnn_ops_infer64_8.dll")
-#LoadDLL("path_to_ort_runtime_files\cudnn_cnn_infer64_8.dll")
-#LoadDLL("path_to_ort_runtime_files\cudnn_adv_infer64_8.dll")
-
-# Uncomment the following line if provider="dml" will be used.
-#LoadDLL("path_to_ort_runtime_files\DirectML.dll")
-
-LoadDLL("path_to_ort_runtime_files\onnxruntime.dll")
-LoadPlugin("mlrt_ort.dll")
-```
+- For `mlrt_ort(provider="cpu")` - only `onnxruntime_dll.7z` is needed.
+- For `mlrt_ort(provider="dml")` - `onnxruntime_dll.7z` and `dml_dll.7z` are needed.
+- For `mlrt_ort(provider="cuda")` - `onnxruntime_dll.7z` and `cuda_dll.7z` are needed.
+- For all providers (`mlrt_ort(provider="cpu/dml/cuda")`) - `onnxruntime_dll.7z`, `dml_dll.7z` and `cuda_dll.7z` are needed.
 
 ### Usage:
 

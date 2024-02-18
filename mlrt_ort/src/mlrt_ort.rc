@@ -1,8 +1,8 @@
 #include <winver.h>
 
 1 VERSIONINFO
-FILEVERSION             1,0,0,0
-PRODUCTVERSION        	1,0,0,0
+FILEVERSION             1,0,1,0
+PRODUCTVERSION        	1,0,1,0
 FILEFLAGSMASK           VS_FFI_FILEFLAGSMASK
 FILETYPE                VFT_DLL
 BEGIN
@@ -12,11 +12,11 @@ BEGIN
         BEGIN
         VALUE "Comments",         "ML filter runtimes."
         VALUE "FileDescription",  "mlrt_ort for AviSynth+."
-        VALUE "FileVersion",      "1.0.0"
+        VALUE "FileVersion",      "1.0.1"
         VALUE "InternalName",     "mlrt_ort"
         VALUE "OriginalFilename", "mlrt_ort.dll"
         VALUE "ProductName",      "mlrt_ort"
-        VALUE "ProductVersion",   "1.0.0"
+        VALUE "ProductVersion",   "1.0.1"
         END
     END
     BLOCK "VarFileInfo"

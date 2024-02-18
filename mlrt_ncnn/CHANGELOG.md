@@ -1,3 +1,6 @@
+##### 1.0.3:
+    Fixed undefined behavior with ACP filename for network_path.
+
 ##### 1.0.2:
     Tilesize_w/h limited to the clip dimensioins.
 
