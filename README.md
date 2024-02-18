@@ -57,13 +57,13 @@ DirectML benchmarks can be found [here](https://github.com/AmusementClub/vs-mlrt
 ### Building:
 
 Requirements:
-- [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows) (`mlrt_ncnn`)
-- ncnn (mlrt_ncnn only)
+- [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (`mlrt_ncnn`)
+- [ncnn](https://github.com/Tencent/ncnn) (mlrt_ncnn only)
 - [OpenVINO](https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit/download.html) (`mlrt_ov`)
-- [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) (`mlrt_ort`)
-- protobuf
-- onnx
-- boost
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime) (`mlrt_ort`)
+- [protobuf](https://github.com/protocolbuffers/protobuf)
+- [onnx](https://github.com/onnx/onnx)
+- [boost](https://www.boost.org/)
 
 ```
 # Build steps:
@@ -92,10 +92,16 @@ cmake --install build_rel
 #b2 --with-system --with-filesystem --with-chrono -q --toolset=msvc-14.3 address-model=64 variant=release link=static runtime-link=shared threading=multi --hash --prefix=.\bin\x64
 #b2 --with-system --with-filesystem --with-chrono -q --toolset=msvc-14.3 address-model=64 variant=release link=static runtime-link=shared threading=multi --hash --prefix=.\bin\x64 install
 
+# Building onnxruntime (mlrt_ort)
+cd ..\mlrt_ort\onnxruntime
+cmake -B build_rel -DCMAKE_BUILD_TYPE=Release -G Ninja -Donnxruntime_BUILD_SHARED_LIB=ON -Dprotobuf_BUILD_TESTS=OFF -Donnxruntime_BUILD_UNIT_TESTS=OFF -Donnxruntime_USE_CUDA=ON -Donnxruntime_CUDA_HOME="%CUDA_PATH%" -Donnxruntime_CUDNN_HOME=<...> -DCMAKE_INSTALL_PREFIX=..\..\install -DCMAKE_CUDA_ARCHITECTURES="50;61-real;75-real;86-real;89-real" -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_MSVC_STATIC_RUNTIME=OFF -DONNX_USE_PROTOBUF_SHARED_LIBS=OFF cmake -Donnxruntime_USE_DML=ON -DFLATBUFFERS_BUILD_TESTS=OFF cmake
+cmake --build build_rel
+cmake --install build_rel
+
 # Building avs-mlrt
 # BUILD_MRLT_NCNN=ON (default)
 # BUILD_MLRT_OV=ON (default)
 # BUILD_MLRT_ORT=ON (default)
-cd ..
-cmake -B build -G Ninja -DProtobuf_DIR=<current_location>\install\cmake -DONNX_DIR=<current_location>\install\lib\cmake\ONNX -Dncnn_DIR=c:\uc\avs-mlrt\install\lib\cmake\ncnn -DOpenVINO_DIR=c:\uc\w_openvino_toolkit_windows_2022.3.0.9052.9752fafe8eb_x86_64\runtime\cmake -DONNX_RUNTIME_API_DIRECTORY=<...> -DONNX_RUNTIME_LIB_DIRECTORY=<...>
+cd ..\..
+cmake -B build -G Ninja -DCMAKE_PREFIX_PATH=".\install";<Vulkan_SDK_path>;<boost_path> -Dncnn_DIR=<...> -DOpenVINO_DIR=<...>
 ```
