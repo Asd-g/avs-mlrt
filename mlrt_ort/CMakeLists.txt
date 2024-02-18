@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(mlrt_ort)
 
-set(ONNX_RUNTIME_API_DIRECTORY "" CACHE PATH "Path to ONNX API headers")
-set(ONNX_RUNTIME_LIB_DIRECTORY "" CACHE PATH "Path to ONNX Runtime libraries")
+find_package(onnxruntime REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 if (WIN32)
@@ -21,16 +20,13 @@ add_library(mlrt_ort SHARED
 target_include_directories(mlrt_ort PRIVATE
     ${Boost_INCLUDE_DIRS}
     ${ONNX_INCLUDE_DIRS}
-    ${ONNX_RUNTIME_API_DIRECTORY}
     ${CUDAToolkit_INCLUDE_DIRS}
 )
-
-target_link_directories(mlrt_ort PRIVATE ${ONNX_RUNTIME_LIB_DIRECTORY})
 
 target_link_libraries(mlrt_ort PRIVATE
     Boost::filesystem
     onnx
-    onnxruntime
+    onnxruntime::onnxruntime
     CUDA::cudart_static
     avisynth
 )
