@@ -674,16 +674,10 @@ static void AVSC_CC free_mlrt_ort(AVS_FilterInfo* fi)
     if constexpr (backend == Backend::CUDA)
     {
         for (const auto& cuda : d->cuda_dll)
-        {
-            if (cuda)
-                FreeLibrary(cuda);
-        }
+            FreeLibrary(cuda);
     }
     if constexpr (backend == Backend::DML)
-    {
-        if (d->dml_dll)
-            FreeLibrary(d->dml_dll);
-    }
+        FreeLibrary(d->dml_dll);
 
     FreeLibrary(d->onnxrt_dll);
 #endif // _WIN32
@@ -767,7 +761,10 @@ static AVS_Value AVSC_CC Create_mlrt_ort(AVS_ScriptEnvironment* env, AVS_Value a
             }
         }
         if (backend == Backend::DML && d->dml_dll)
-            FreeLibrary(d->dml_dll);
+        {
+            if (d->dml_dll)
+                FreeLibrary(d->dml_dll);
+        }
         if (d->onnxrt_dll)
             FreeLibrary(d->onnxrt_dll);
 #endif // _WIN32
