@@ -8,7 +8,7 @@ How to load the above runtimes:
 - Create the following script (for example `mlrt_ov_loader.avsi`) (it could be placed in the plugins folder for autoloading or be mannually imported):
 
 ```
-LoadDLL("path_to\tbb.dll")
+LoadDLL("path_to\tbb12.dll")
 LoadDLL("path_to\openvino.dll")
 LoadPlugin("mlrt_ov.dll")
 ```
