@@ -2,10 +2,13 @@
 
 
 ### Requirements
+# AviSynth+ r4069 or later
 # avs_mlrt
-# avsresize - for mlrt_W2x(model=0/1/2, preprocess=true), mlrt_W2x(model=8, scale < 4)
+# avsresize - for mlrt_W2x(model=0/1/2, preprocess=true), mlrt_W2x(model=8, scale < 4), mlrt_RIFE
 # fmtconv - for mlrt_W2x(model=6, scale=1) and mlrt_RealESRGAN(scale=...)
 # FillBorders - only for mlrt_W2x(model=6, scale=2)
+# RemapFrames - for mlrt_RIFE
+# FrameSel - for mlrt_RIFE
 
 
 ### Usage ###
@@ -497,6 +500,198 @@ Function mlrt_SAFA(clip c, val "tiles", val "tilesize", int "overlap_w", int "ov
     }
 
     return c
+}
+
+Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den", int "model", val "backend", bool "ensemble", bool "sc", float "sc_threshold")
+{
+    factor_num = Default(factor_num, 2)
+    factor_den = Default(factor_den, 1)
+    model = Default(model, 3)
+    backend = backend_define(Default(backend, "ov"), "mlrt_RIFE")
+    ensemble = Default(ensemble, False)
+    sc = Default(sc, False)
+    sc_threshold = Default(sc_threshold, 0.1)
+
+    Assert(ComponentSize(c) == 4, "mlrt_RIFE: clip must be in 32-bit planar format.")
+    Assert(IsPlanarRGB(c), "mlrt_RIFE: clip must be of planar RGB color family.")
+    Assert(implementation != 1 || implementation != 2, "mlrt_RIFE: implementation must be either 1 or 2.")
+    Assert(model >= 0 && model <= 19, "mlrt_RIFE: model must be between 0..19.")
+    Assert(backend[0] == "ov" || backend[0] == "ort", "mlrt_RIFE: backend must be ov or ort.")
+
+    rife_models = Select(model,
+        \ "v4.0",
+        \ "v4.2",
+        \ "v4.3",
+        \ "v4.4",
+        \ "v4.5",
+        \ "v4.6",
+        \ "v4.7",
+        \ "v4.8",
+        \ "v4.9",
+        \ "v4.10",
+        \ "v4.11",
+        \ "v4.12",
+        \ "v4.12_lite",
+        \ "v4.13",
+        \ "v4.13_lite",
+        \ "v4.14",
+        \ "v4.14_lite",
+        \ "v4.15",
+        \ "v4.15_lite",
+        \ "v4.16_lite")
+
+    multi = Float(factor_num) / factor_den
+
+    c = Expr(c, "x 0 1 clip")
+
+    if (Frac(multi) == 0.0)
+    {
+        multi = factor_num / factor_den
+        Assert(multi >= 2, "mlrt_RIFE: factor_num must be at least 2x factor_den.")
+
+        c_array = [c]
+        multi_minus_one = multi - 1
+        for (i = 2, multi_minus_one)
+        {
+            c_array = ArrayAdd(c_array, c)
+        }
+
+        initial = Interleave(c_array)
+
+        terminal = DuplicateFrame(c, FrameCount(c) - 1)
+        terminal = Trim(terminal, 1, 0)
+
+        terminal_array = [terminal]
+        for (i = 2, multi_minus_one)
+        {
+            terminal_array = ArrayAdd(terminal_array, terminal)
+        }
+
+        terminal = Interleave(terminal_array)
+
+        timepoint_array = []
+        for (i = 1, multi_minus_one)
+        {
+            timepoint_array = ArrayAdd(timepoint_array, BlankClip(clip=c, colors=[Float(i) / multi], pixel_type="y32"))
+        }
+
+        timepoint = Interleave(timepoint_array)
+
+        output0 = RIFEMerge(c, initial, terminal, timepoint, implementation, rife_models, ensemble, backend)
+
+        if (sc)
+        {
+            output0 = RIFEsc(output0, initial, sc_threshold)
+        }
+
+        if (multi == 2)
+        {
+            res = Interleave(c, output0)
+        }
+        else
+        {
+            res_array = [c]
+            for (i = 0, multi_minus_one - 1)
+            {
+                res_array = ArrayAdd(res_array, SelectEvery(output0, multi - 1, i))
+            }
+
+            res = Interleave(res_array)
+        }
+
+        return (FrameRateNumerator(c) != 0 && FrameRateDenominator(c) != 0) ?
+            \ AssumeFPS(res, FrameRateNumerator(c) * multi, FrameRateDenominator(c))
+            \ : res
+    }
+    else
+    {
+        src_fps_num = FrameRateNumerator(c)
+        src_fps_den = FrameRateDenominator(c)
+        src_fps = (src_fps_num == 0 || src_fps_den == 0) ? 1.0 : FrameRate(c)
+        dst_fps = src_fps * multi
+        src_frames = FrameCount(c)
+        dst_frames = Min(Int(src_frames * multi), Int(Pow(2, 31)) - 1)
+
+        duration_rel = src_fps / dst_fps
+        dst_duration = ContinuedNumerator(duration_rel, limit=5000000)
+        src_duration = ContinuedDenominator(duration_rel, limit=5000000)
+
+        temp = BlankClip(clip=c, length=dst_frames)
+
+        left_clip = ScriptClip(temp, function [c, src_duration, dst_duration] ()
+        {
+            return FrameSel(c, dst_duration * current_frame / src_duration)
+        })
+
+        right_clip = ScriptClip(temp, function [c, src_duration, dst_duration] ()
+        {
+            return FrameSel(c, dst_duration * current_frame / src_duration + 1)
+        })
+
+        temp_gray = BlankClip(clip=temp, pixel_type="y32")
+        tp_clip = ScriptClip(temp_gray, function [c, src_duration, dst_duration] ()
+        {
+            current_time = dst_duration * current_frame
+            return BlankClip(clip=last, colors=Float(current_time - src_duration * (current_time / src_duration)) / src_duration)
+        })
+
+        output0 = RIFEMerge(c, left_clip, right_clip, tp_clip, implementation, rife_models, ensemble, backend)
+
+        y_clip = z_ConvertFormat(output0, pixel_type="y32", colorspace_op="rgb:709:709:f=>709:709:709:l")
+        res = ScriptClip(output0, function [left_clip, src_duration, dst_duration, src_frames, y_clip, sc_threshold] ()
+        {
+            current_time = dst_duration * current_frame
+            if (current_time % src_duration == 0 || (current_time / src_duration) + 1 >= src_frames || YDifferenceToNext(y_clip) > sc_threshold)
+            {
+                return left_clip
+            }
+        })
+
+        return (src_fps_num != 0 && src_fps_den != 0) ?
+            \ AssumeFPS(res, ContinuedNumerator(dst_fps, limit=5000000), ContinuedDenominator(dst_fps, limit=5000000))
+            \ : res
+    }
+}
+
+Function RIFEMerge(clip c, clip clipa, clip clipb, clip clipc, int implementation, string rife_models, bool ensemble, string_array backend)
+{
+    if (implementation == 1)
+    {
+        Assert(!(Width(c) % 32 != 0 || Height(c) % 32 != 0), "mlrt_RIFE: width/height must be divisible by " + String(32) + "(" + String(Width(c)) + ", " + String(Height(c)) + ").")
+
+        empty = BlankClip(clip=clipa, pixel_type="y32")
+        horizontal = Expr(empty, "sx 2 * width 1 - / 1 -")
+        vertical = Expr(empty, "sy 2 * height 1 - / 1 -")
+
+        multiplier_h = BlankClip(clip=clipa, pixel_type="y32", colors=2.0/(Width(clipa) - 1))
+        multiplier_v = BlankClip(clip=clipa, pixel_type="y32", colors=2.0/(Height(clipa) - 1))
+
+        network_path = "rife_mlrt/rife/" + "rife_" + rife_models + ((ensemble) ? "_ensemble" : "") + ".onnx"
+
+        backend_defaults = backend_defaults(backend)
+
+        return Eval("mlrt_" + backend[0] + "([clipa, clipb, clipc, horizontal, vertical, multiplier_h, multiplier_v], network_path=network_path, builtin=true" + backend_defaults + ")")
+    }
+    else
+    {
+        network_path = "rife_mlrt/rife_v2/" + "rife_" + rife_models + ((ensemble) ? "_ensemble" : "") + ".onnx"
+
+        backend_defaults = backend_defaults(backend)
+
+        return Eval("mlrt_" + backend[0] + "([clipa, clipb, clipc], network_path=network_path, builtin=true" + backend_defaults + ")")
+    }
+}
+
+Function RIFEsc(clip output0, clip source, float sc_threshold)
+{
+    y_clip = z_ConvertFormat(output0, pixel_type="y32", colorspace_op="rgb:709:709:f=>709:709:709:l")
+    return ScriptClip(output0, function [y_clip, source, sc_threshold] ()
+    {
+        if (YDifferenceToNext(y_clip) > sc_threshold)
+        {
+            return rfs(last, source, mappings=String(current_frame))
+        }
+    })
 }
 
 Function calc_tilesize(int width, int height, int multiple, int overlap_w, int overlap_h, val "tiles", val "tilesize")
