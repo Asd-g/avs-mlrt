@@ -51,6 +51,13 @@
 17: "v4.15"
 18: "v4.15_lite"
 19: "v4.16_lite"
+20: "v4_17"
+21: "v4_17_lite"
+22: "v4_18"
+23: "v4_19"
+24: "v4_20"
+25: "v4_21"
+26: "v4_22"
 */
 #---------------
 # backend (default "ov"): What backend to be used (ov, or ort) and its tuning parameters.
@@ -70,10 +77,13 @@
 # Must be between 0.0..1.0.
 
 
-### Version: 1.0.0
+### Version: 1.0.1
 
 
 ### Changelog ###
+#---------------
+# 1.0.1
+# Added support for models: v4_17, v4_17_lite, v4_18, v4_19, v4_20, v4_21, v4_22.
 #---------------
 # 1.0.0
 # Initial version.
@@ -116,7 +126,14 @@ Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den
         \ "v4.14_lite",
         \ "v4.15",
         \ "v4.15_lite",
-        \ "v4.16_lite")
+        \ "v4.16_lite",
+        \ "v4_17",
+        \ "v4_17_lite",
+        \ "v4_18",
+        \ "v4_19",
+        \ "v4_20",
+        \ "v4_21",
+        \ "v4_22")
 
     multi = Float(factor_num) / factor_den
 
