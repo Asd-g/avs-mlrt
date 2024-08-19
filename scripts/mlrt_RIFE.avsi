@@ -51,13 +51,14 @@
 17: "v4.15"
 18: "v4.15_lite"
 19: "v4.16_lite"
-20: "v4_17"
-21: "v4_17_lite"
-22: "v4_18"
-23: "v4_19"
-24: "v4_20"
-25: "v4_21"
-26: "v4_22"
+20: "v4.17"
+21: "v4.17_lite"
+22: "v4.18"
+23: "v4.19"
+24: "v4.20"
+25: "v4.21"
+26: "v4.22"
+27: "v4.22_lite"
 */
 #---------------
 # backend (default "ov"): What backend to be used (ov, or ort) and its tuning parameters.
@@ -102,7 +103,7 @@ Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den
     Assert(ComponentSize(c) == 4, "mlrt_RIFE: clip must be in 32-bit planar format.")
     Assert(IsPlanarRGB(c), "mlrt_RIFE: clip must be of planar RGB color family.")
     Assert(implementation != 1 || implementation != 2, "mlrt_RIFE: implementation must be either 1 or 2.")
-    Assert(model >= 0 && model <= 19, "mlrt_RIFE: model must be between 0..19.")
+    Assert(model >= 0 && model <= 27, "mlrt_RIFE: model must be between 0..27.")
     Assert(backend[0] == "ov" || backend[0] == "ort", "mlrt_RIFE: backend must be ov or ort.")
     Assert(sc_threshold >= 0.0 && sc_threshold <= 1.0, "mlrt_RIFE: sc_threshold must be between 0.0..1.0.")
 
@@ -127,13 +128,14 @@ Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den
         \ "v4.15",
         \ "v4.15_lite",
         \ "v4.16_lite",
-        \ "v4_17",
-        \ "v4_17_lite",
-        \ "v4_18",
-        \ "v4_19",
-        \ "v4_20",
-        \ "v4_21",
-        \ "v4_22")
+        \ "v4.17",
+        \ "v4.17_lite",
+        \ "v4.18",
+        \ "v4.19",
+        \ "v4.20",
+        \ "v4.21",
+        \ "v4.22",
+        \ "v4.22_lite")
 
     multi = Float(factor_num) / factor_den
 
