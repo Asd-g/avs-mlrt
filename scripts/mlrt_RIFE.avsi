@@ -11,7 +11,7 @@
 
 ### Usage ###
 ###
-# Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den", int "model", val "backend", bool "ensemble", bool "sc", float "sc_threshold")
+# Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den", int "fps_num", int "fps_den", int "model", val "backend", bool "ensemble", bool "sc", float "sc_threshold")
 ###
 ## Parameters ##
 #---------------
@@ -26,6 +26,10 @@
 # factor_num, factor_den: Factor of target frame rate.
 # Default: factor_num = 2, factor_den = 1.
 # factor_num must be at least 2x factor_den.
+#---------------
+# fps_num, fps_den: Target frame rate.
+# Default: not specified.
+# If these are specified they supersedes factor_num and factor_den parameter.
 #---------------
 # model (default 3): What model to be used.
 # For implementation=1: models must be placed in folder "models/rife_mlrt/rife" where the root folder "models" must be in the same location as mlrt_xxx.dll.
@@ -78,10 +82,17 @@
 # Must be between 0.0..1.0.
 
 
-### Version: 1.0.1
+### Version: 1.1.0
 
 
 ### Changelog ###
+#---------------
+# 1.1.0
+# Added parameters fps_num and fps_den.
+#---------------
+# 1.0.2
+# Added support for model v4.22_lite.
+# Fixed model names.
 #---------------
 # 1.0.1
 # Added support for models: v4_17, v4_17_lite, v4_18, v4_19, v4_20, v4_21, v4_22.
@@ -90,7 +101,7 @@
 # Initial version.
 
 
-Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den", int "model", val "backend", bool "ensemble", bool "sc", float "sc_threshold")
+Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den", int "fps_num", int "fps_den", int "model", val "backend", bool "ensemble", bool "sc", float "sc_threshold")
 {
     factor_num = Default(factor_num, 2)
     factor_den = Default(factor_den, 1)
@@ -137,7 +148,9 @@ Function mlrt_RIFE(clip c, int implementation, int "factor_num", int "factor_den
         \ "v4.22",
         \ "v4.22_lite")
 
-    multi = Float(factor_num) / factor_den
+    multi = (Defined(fps_num) && Defined(fps_den)) ?
+        \ ((Float(fps_num) / fps_den) / FrameRate(c)) :
+        \ (Float(factor_num) / factor_den)
 
     c = Expr(c, "x 0 1 clip")
 
