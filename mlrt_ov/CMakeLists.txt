@@ -28,6 +28,11 @@ target_link_libraries(mlrt_ov PRIVATE
     avisynth
 )
 
+if (MSVC)
+    target_link_libraries(mlrt_ort PRIVATE delayimp)
+    target_link_options(mlrt_ort PRIVATE "/DELAYLOAD:openvino.dll")
+endif()
+
 target_compile_features(mlrt_ov PRIVATE cxx_std_20)
 
 if (MSVC)
