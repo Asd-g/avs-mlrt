@@ -2,7 +2,7 @@
 
 ### Runtime files
 
-All runtime files must be in `mlrt_ort_rt` folder that is located in the same folder as `mlrt.ort.dll`.<br>
+All runtime files must be in `mlrt_ort_rt` folder that is located in the same folder as `mlrt_ort.dll`.<br>
 They can be downloaded from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
 
 - For `mlrt_ort(provider="cpu")` - only `onnxruntime_dll.7z` is needed.
