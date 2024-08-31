@@ -16,6 +16,16 @@
 
 #include <openvino/pass/visualize_tree.hpp>
 
+#ifdef _WIN32
+#define NOCOMM
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+
+#include <Windows.h>
+
+static std::atomic<int> ref_count{ 0 };
+#endif // _WIN32
+
 
 extern std::variant<std::string, ONNX_NAMESPACE::ModelProto> loadONNX(
     const std::string& path,
@@ -188,6 +198,11 @@ struct OVData
     std::string output_name;
 
     std::string err;
+
+#ifdef _WIN32
+    std::string mlrt_ov_path;
+#endif // _WIN32
+
 };
 
 
@@ -360,6 +375,19 @@ static void AVSC_CC free_mlrt_ov(AVS_FilterInfo* fi)
     for (const auto& node : d->nodes)
         avs_release_clip(node);
 
+#ifdef _WIN32
+    if (--ref_count == 0)
+    {
+        std::array<HMODULE, 2> loaded_dlls{
+            GetModuleHandleA((d->mlrt_ov_path + "/mlrt_ov_rt/openvino.dll").c_str()),
+            GetModuleHandleA((d->mlrt_ov_path + "/mlrt_ov_rt/tbb12.dll").c_str())
+        };
+
+        for (int i{ 0 }; i < 2; ++i)
+            FreeLibrary(loaded_dlls[i]);
+    }
+#endif // _WIN32
+
     delete d;
 }
 
@@ -374,7 +402,36 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
 {
     enum { Clips, Network_path, Overlap_w, Overlap_h, Tilesize_w, Tilesize_h, Device, Builtin, Builtindir, Fp16, Config, Path_is_serialization, List_devices, Fp16_blacklist_ops, Dot_path };
 
+    const std::string mlrt_ov_path{ boost::dll::this_line_location().parent_path().generic_string() };
+
+#ifdef _WIN32
+    if (ref_count == 0)
+    {
+        std::array<HMODULE, 2> loaded_dlls{
+            LoadLibraryA((mlrt_ov_path + "/mlrt_ov_rt/tbb12.dll").c_str()),
+            LoadLibraryA((mlrt_ov_path + "/mlrt_ov_rt/openvino.dll").c_str()),
+        };
+        if (!loaded_dlls[0])
+        {
+            std::string_view tbb12_path{ ("mlrt_ov: cannot find " + mlrt_ov_path + "/mlrt_ov_rt/tbb12.dll").c_str() };
+            return avs_new_value_error(avs_save_string(env, tbb12_path.data(), tbb12_path.size()));
+        }
+        if (!loaded_dlls[1])
+        {
+            FreeLibrary(loaded_dlls[0]);
+            std::string_view openvino_path{ ("mlrt_ov: cannot find " + mlrt_ov_path + "/mlrt_ov_rt/openvino.dll").c_str() };
+            return avs_new_value_error(avs_save_string(env, openvino_path.data(), openvino_path.size()));
+        }
+    }
+
+    ++ref_count;
+#endif // _WIN32
+
     OVData* d{ new OVData() };
+
+#ifdef _WIN32
+    d->mlrt_ov_path = mlrt_ov_path;
+#endif // _WIN32
 
     AVS_FilterInfo* fi;
     AVS_Clip* clip{ avs_new_c_filter(env, &fi, *avs_as_array(avs_array_elt(args, Clips)), 1) };
@@ -428,8 +485,7 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
         d->err = "mlrt_ov: "s + error_message;
 
         return avs_new_value_error(d->err.c_str());
-    }
-    };
+    } };
 
     if (avs_check_version(env, 10))
         return set_error("AviSynth+ version must be r3928 or later.");
@@ -508,7 +564,7 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
     if (builtin)
     {
         std::string modeldir{ avs_defined(avs_array_elt(args, Builtindir)) ? (avs_as_string(avs_array_elt(args, Builtindir))) : "models" };
-        network_path = boost::dll::this_line_location().parent_path().generic_string() + "/" + modeldir + "/" + network_path;
+        network_path = mlrt_ov_path + "/" + modeldir + "/" + network_path;
     }
 
     auto result{ loadONNX(network_path, 0, tile_w, tile_h, path_is_serialization) };
@@ -665,6 +721,25 @@ static AVS_Value AVSC_CC Create_mlrt_ov(AVS_ScriptEnvironment* env, AVS_Value ar
 
 const char* AVSC_CC avisynth_c_plugin_init(AVS_ScriptEnvironment* env)
 {
-    avs_add_function(env, "mlrt_ov", "c+[network_path]s[overlap_w]i[overlap_h]i[tilesize_w]i[tilesize_h]i[device]s[builtin]b[builtindir]s[fp16]b[config]s[path_is_serialization]b[list_devices]b[fp16_blacklist_ops]s*[dot_path]s", Create_mlrt_ov, 0);
+    const char args[]{
+        "c+"
+        "[network_path]s"
+        "[overlap_w]i"
+        "[overlap_h]i"
+        "[tilesize_w]i"
+        "[tilesize_h]i"
+        "[device]s"
+        "[builtin]b"
+        "[builtindir]s"
+        "[fp16]b"
+        "[config]s"
+        "[path_is_serialization]b"
+        "[list_devices]b"
+        "[fp16_blacklist_ops]s*"
+        "[dot_path]s"
+    };
+
+    avs_add_function(env, "mlrt_ov", args, Create_mlrt_ov, 0);
+
     return "mlrt_ov";
 }

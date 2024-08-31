@@ -1,17 +1,9 @@
 ## mlrt_ov
 
-Download the required OpenVINO runtimes (`openvino_dll.7z`) from [Releases](https://github.com/Asd-g/avs-mlrt/releases).
+### Runtime files
 
-How to load the above runtimes:
-- (Optional) Add the extracted files to PATH.
-- Download [LoadDLL.dll](https://forum.doom9.org/showthread.php?t=173259).
-- Create the following script (for example `mlrt_ov_loader.avsi`) (it could be placed in the plugins folder for autoloading or be mannually imported):
-
-```
-LoadDLL("path_to\tbb12.dll")
-LoadDLL("path_to\openvino.dll")
-LoadPlugin("mlrt_ov.dll")
-```
+All runtime files must be in `mlrt_ov_rt` folder that is located in the same folder as `mlrt_ov.dll`.<br>
+They can be downloaded from [Releases](https://github.com/Asd-g/avs-mlrt/releases) (` openvino_dll.7z`).
 
 ### Note:
 
