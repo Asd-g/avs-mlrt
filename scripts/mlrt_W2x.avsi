@@ -58,10 +58,13 @@
 # preprocess (default True): Whether to upscale 2x before feeding the image to the models.
 
 
-### Version: 1.1.6
+### Version: 1.1.7
 
 
 ### Changelog ###
+#---------------
+# 1.1.7
+# Fixed preprocess of model 0/1/2.
 #---------------
 # 1.1.6
 # Moved every filter in own file.
@@ -145,7 +148,7 @@ Function mlrt_W2x(clip c, int "noise", int "scale", val "tiles", val "tilesize",
     if (preprocess && (model == 0 || model == 1 || model == 2))
     {
         # emulating cv2.resize(interpolation=cv2.INTER_CUBIC)
-        c = z_ConvertFormat(c, BitLShiftL(width_, 1), BitLShiftL(height_, 1), filter_param_a=0, filter_param_b=0.75)
+        c = z_ConvertFormat(c, BitLShiftL(width_, 1), BitLShiftL(Height(c), 1), filter_param_a=0, filter_param_b=0.75)
     }
 
     l = 0
