@@ -35,7 +35,7 @@ static std::optional<std::string> specifyShape(
 
     if (model.graph().input_size() != 1)
     {
-        return "graph must has a single input";
+        return "graph must have a single input";
     }
     ONNX_NAMESPACE::TensorShapeProto* input_shape{
         model
